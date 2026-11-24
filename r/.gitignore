@@ -1,0 +1,14 @@
+# copied from the repository C++ core by tools/sync_core.sh (configure runs it); not tracked
+src/*.cpp
+!src/lex1dx_r.cpp
+!src/RcppExports.cpp
+src/*.hpp
+src/*.h
+src/lex/
+src/lex1dx/
+src/*.o
+src/*.so
+src/*.dll
+src/symbols.rds
+*.Rcheck/
+*.tar.gz

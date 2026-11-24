@@ -1,0 +1,19 @@
+Vendored from github.com/gronlund/kmeans1d commit
+585386d4678000691706acdb954911be8fea1c5c
+(MIT License, Copyright (c) 2020 Allan Grønlund).
+
+This copy is only the wilber-interp solver and interval_sum, not the
+rest of that repository.
+
+lex1dx applies a minimal weighted-cost patch:
+- interval_sum accepts weighted items (w, wx, wx2) and uses
+  cost(i,j) = max(0, S2 - S1^2/W) over items i..j (inclusive, same
+  indexing as the unweighted cost_interval_l2).
+- kmeans_wilber has a matching constructor; k=1 centers and
+  get_actual_cost centers use the weighted mean.
+The unweighted constructor is preserved (W of each item is 1).
+
+lex1dx also disables the interpolation-search "add random noise"
+fallback, which is not deterministic, and silences a debug print on
+set_search_strategy. If the empty-lambda case occurs, clustering fails
+instead of perturbing the points.

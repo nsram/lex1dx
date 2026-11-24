@@ -1,0 +1,19 @@
+Package: lex1dx
+Type: Package
+Title: Fast 1-D k-Means with a 0.01% REE Tolerance
+Version: 0.1.0
+Authors@R: person("Sriram", "Natarajan", email = "nsram@users.noreply.github.com",
+    role = c("aut", "cre", "cph"))
+Description: Partitions one-dimensional data into k contiguous clusters with a low
+    within-cluster sum of squares. The default tuned pipeline sorts the data, collapses
+    to M = max(4096, 32k) groups, runs a weighted wilber-interp dynamic program, and
+    refines the cuts. Optional five-significant-digit grouping (mode 'sig5') is provided.
+    The C++ core is shared with the Python and Scala implementations in the same
+    repository. Objectives and defaults differ from 'lex1d', which remains the
+    paper-faithful exact-quality reference.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports: Rcpp
+LinkingTo: Rcpp
+Suggests: testthat (>= 3.0.0)
+Config/testthat/edition: 3

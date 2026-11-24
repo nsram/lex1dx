@@ -1,0 +1,13 @@
+lex1dx
+Copyright (c) 2026 Sriram Natarajan
+
+This project includes code derived from kmeans1d by Allan Grønlund,
+https://github.com/gronlund/kmeans1d, commit
+585386d4678000691706acdb954911be8fea1c5c, MIT License
+(Copyright (c) 2020 Allan Grønlund). The wilber-interp dynamic program
+in third_party/kmeans1d/ (and the Scala port in
+scala/src/main/scala/lex1dx/Wilber.scala) comes from that work, with a
+weighted interval-cost patch described in third_party/kmeans1d/ORIGIN
+and LICENSE.
+
+The full MIT license text for kmeans1d is in third_party/kmeans1d/LICENSE.

@@ -1,0 +1,31 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "lex1dx"
+version = "0.1.0"
+description = "Fast 1-D k-means with a 0.01% relative-excess-SSE tolerance"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Sriram Natarajan" }]
+dependencies = ["numpy>=1.21"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.21"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["src/lex1dx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
