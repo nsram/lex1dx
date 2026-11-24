@@ -2,7 +2,7 @@
 // next to the test binary as agree_cpp.txt (and per-case files).
 #include "support.hpp"
 #include "lex1dx/lex1dx.hpp"
-
+#include <filesystem>
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -65,6 +65,7 @@ static std::vector<double> builtin() {
 int main() {
     const char* outdir = std::getenv("LEX1DX_AGREE_DIR");
     const std::string dir = outdir ? outdir : ".";
+    std::filesystem::create_directories(dir);
     std::ofstream all(dir + "/agree_cpp.txt");
     CHECK(all.good());
 
