@@ -74,4 +74,12 @@ class LexTest extends munit.FunSuite:
     assertEquals(Options.defaultM(128), 4096)
     assertEquals(Options.defaultM(256), 8192)
     assertEquals(Options.defaultM(512), 16384)
+
+  test("coarse DP ignores a group's internal SSE consistently (sig5, M=4)"):
+    // see the same test in cpp/tests/test_quality.cpp; optimum {0,3,5,6}, SSE 1.1746
+    val xs = Array(0.08, 0.63, 1.57, 3.27, 3.55, 4.66)
+    for mode <- List(Mode.Tuned, Mode.Sig5) do
+      val r = Lex.cluster(xs, 3, Options(mode = mode, coarseGroups = 4))
+      assertEquals(r.bounds.toList, List(0, 3, 5, 6), s"mode=$mode")
+      assert(math.abs(r.sse - 1.1746) < 1e-12, s"mode=$mode sse=${r.sse}")
 end LexTest

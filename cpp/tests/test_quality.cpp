@@ -44,5 +44,18 @@ int main() {
         CHECK(r.k() == 16);
     });
 
+    test("coarse DP ignores a group's internal SSE consistently (sig5, M=4)", [&] {
+        // Collapse to 4 groups makes {0.08, 0.63} one group with internal SSE. If the DP counts
+        // that SSE only when the group shares a bin, it starts from {0,2,3,6} (SSE 1.2321...).
+        // The optimum on the raw points is {0,3,5,6} with SSE 1.1746.
+        const std::vector<double> xs{0.08, 0.63, 1.57, 3.27, 3.55, 4.66};
+        for (auto mode : {Mode::Tuned, Mode::Sig5}) {
+            Options o; o.mode = mode; o.coarse_groups = 4;
+            const auto r = cluster(xs, 3, o);
+            CHECK((r.bounds == std::vector<int>{0, 3, 5, 6}));
+            CHECK(std::abs(r.sse - 1.1746) < 1e-12);
+        }
+    });
+
     return finish();
 }

@@ -128,10 +128,11 @@ object Lex:
     while i < G do
       val lo = groups(i)
       val hi = groups(i + 1)
+      // point mass at the group mean (wx2 = W mu^2); see agg_atoms in lex1dx.cpp
       if a.weighted then
-        w(i) = a.wsum(lo, hi)
-        wx(i) = a.wS(lo, hi)
-        wx2(i) = a.wQ(lo, hi)
+        val W = a.wsum(lo, hi)
+        val mu = a.mean(lo, hi)
+        w(i) = W; wx(i) = W * mu; wx2(i) = W * mu * mu
       else
         val c = (hi - lo).toDouble
         val mu = a.mean(lo, hi)

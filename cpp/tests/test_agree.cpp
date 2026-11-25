@@ -1,8 +1,9 @@
 // C++ side of the C++/Scala agreement: dumps cluster results for a fixed set
 // next to the test binary as agree_cpp.txt (and per-case files).
+#include <filesystem>
 #include "support.hpp"
 #include "lex1dx/lex1dx.hpp"
-#include <filesystem>
+
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>

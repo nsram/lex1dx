@@ -50,10 +50,14 @@ Agg agg_atoms(const Atoms& a, const std::vector<int>& groups) {
     g.w.resize(G); g.wx.resize(G); g.wx2.resize(G);
     for (int i = 0; i < G; ++i) {
         const int lo = groups[i], hi = groups[i + 1];
+        // Each group enters the DP as a point mass at its mean: wx2 = W * mu^2, not the group's
+        // raw sum of squares. Wilber's interval cost is 0 for a single item, so keeping a group's
+        // internal SSE in wx2 would count it only when the group shares a bin, which can change
+        // the argmin. Dropping it everywhere subtracts the same constant from every partition.
         if (a.weighted) {
-            g.w[i] = a.wsum(lo, hi);
-            g.wx[i] = a.wS(lo, hi);
-            g.wx2[i] = a.wQ(lo, hi);
+            const double W = a.wsum(lo, hi);
+            const double mu = a.mean(lo, hi);
+            g.w[i] = W; g.wx[i] = W * mu; g.wx2[i] = W * mu * mu;
         } else {
             const double c = hi - lo;
             const double mu = a.mean(lo, hi);
