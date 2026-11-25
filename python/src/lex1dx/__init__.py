@@ -40,7 +40,7 @@ class Result:
     sse: float           # sum of squared deviations from the bin means (raw values)
     D: int               # distinct values after sort and -0 canonicalization
     Dprime: int          # atoms after the grouping actually used (equals D for tuned)
-    sig: int = 0         # significant digits used for grouping; 0 = full precision
+    sig: int             # significant digits used for grouping; 0 = full precision
     sweeps: int
     moves: int
     presorted: bool      # the input was already sorted, so the sort was skipped
