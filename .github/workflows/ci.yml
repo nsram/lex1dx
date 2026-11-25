@@ -8,42 +8,38 @@ jobs:
     env:
       LEX1DX_AGREE_DIR: /tmp/lex1dx-agree
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-      - uses: sbt/setup-sbt@v1
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: sbt
+      - uses: sbt/setup-sbt@v1
       - name: Configure and build (C++)
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release
-      - name: Test (C++)
+      - name: Test (C++, also writes the agreement dump)
         run: ctest --test-dir build -C Release --output-on-failure
-      - name: Write C++ agreement dump
-        run: mkdir -p "$LEX1DX_AGREE_DIR" && ./build/test_agree
       - name: Test (Scala)
         working-directory: scala
-        run: sbt test
+        run: sbt -batch test
 
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install and test (Python)
         working-directory: python
         run: |
           python -m pip install --upgrade pip
-          pip install .
-          pip install pytest
+          pip install . pytest
           pytest
 
   r:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
