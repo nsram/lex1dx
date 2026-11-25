@@ -35,7 +35,10 @@ struct Result {
     std::vector<double> upper;    ///< largest raw value in each bin
     double sse = 0;               ///< sum of squared deviations from the bin means (raw values)
     int D = 0;                    ///< distinct values after sort and -0 canonicalization
-    int Dprime = 0;               ///< atoms after optional sig5 grouping (equals D for Tuned)
+    int Dprime = 0;               ///< atoms after the grouping actually used (equals D for Tuned,
+                                  ///< or for Sig5 after a fallback to raw distinct values)
+    int sig = 0;                  ///< significant digits used for grouping; 0 means full precision
+                                  ///< (Tuned, or Sig5 fallback to raw distinct-value atoms)
     int sweeps = 0;               ///< refinement sweeps
     int moves = 0;                ///< refinement moves applied
     bool presorted = false;       ///< the input was already in ascending order
@@ -46,10 +49,15 @@ struct Result {
 };
 
 /// Cluster `xs` into `k` contiguous bins of the sorted values.
-/// Pipeline: sort, optional 5-significant-digit grouping, tuned batch Collapse
+/// Pipeline: sort, optional significant-digit grouping, tuned batch Collapse
 /// (0.75-quantile batches, heap finish at 16384 remaining merges), weighted
-/// wilber-interp DP on the M groups, then Refine.
-/// k larger than the number of atoms is clamped to it.
+/// wilber-interp DP on the M groups, then Refine on those atoms (sig5 then
+/// maps the refined bounds back to raw indices).
+/// Sig5 starts at 5 significant digits. If that yields fewer than k groups and
+/// the raw data has at least k distinct values, grouping is retried at 6, 7, ...
+/// digits, and if 15 digits are still not enough, raw distinct-value atoms are
+/// used (the same atoms as Tuned) so the result has min(k, D) bins.
+/// k larger than the number of distinct values is clamped to it.
 /// Throws std::invalid_argument on empty input, non-finite values, or k < 1.
 Result cluster(const double* xs, std::size_t n, int k, const Options& options = {});
 inline Result cluster(const std::vector<double>& xs, int k, const Options& options = {}) {

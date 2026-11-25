@@ -89,7 +89,7 @@ std::vector<int> map_raw(const std::vector<int>& b, const std::vector<int>& elem
 }
 
 Result summarize_raw(const std::vector<double>& sorted, std::vector<int> b,
-                     int D, int Dprime, lex::detail::RefineStats stats, bool presorted) {
+                     int D, int Dprime, int sig, lex::detail::RefineStats stats, bool presorted) {
     const int k = static_cast<int>(b.size()) - 1;
     Result r;
     r.sizes.resize(k);
@@ -118,6 +118,7 @@ Result summarize_raw(const std::vector<double>& sorted, std::vector<int> b,
     r.sse = sse;
     r.D = D;
     r.Dprime = Dprime;
+    r.sig = sig;
     r.sweeps = stats.sweeps;
     r.moves = stats.moves;
     r.presorted = presorted;
@@ -139,11 +140,28 @@ Result cluster(const double* xs, std::size_t n, int k, const Options& options) {
 
     std::vector<int> elem_start;
     std::unique_ptr<Atoms> storage;
+    int used_sig = 0;
+    bool map_groups = false;
     if (sig5) {
-        auto g = siggroup::group_fast(sorted, 5);
-        elem_start = std::move(g.start);
-        lex::detail::sort_pairs(g.mean, g.w);
-        storage = std::make_unique<Atoms>(std::move(g.mean), std::move(g.w), 0.0);
+        // Raise precision until there are at least k groups, or we reach raw atoms.
+        int sig = 5;
+        auto g = siggroup::group_fast(sorted, sig);
+        while (static_cast<int>(g.w.size()) < k &&
+               static_cast<int>(g.w.size()) < D &&
+               sig < 15) {
+            ++sig;
+            g = siggroup::group_fast(sorted, sig);
+        }
+        if (static_cast<int>(g.w.size()) < k && static_cast<int>(g.w.size()) < D) {
+            storage = std::make_unique<Atoms>(sorted, 0.0);
+            used_sig = 0;
+        } else {
+            used_sig = sig;
+            elem_start = std::move(g.start);
+            lex::detail::sort_pairs(g.mean, g.w);
+            storage = std::make_unique<Atoms>(std::move(g.mean), std::move(g.w), 0.0);
+            map_groups = true;
+        }
     } else {
         storage = std::make_unique<Atoms>(sorted, 0.0);
     }
@@ -175,8 +193,12 @@ Result cluster(const double* xs, std::size_t n, int k, const Options& options) {
         b = wilber_to_bounds(groups, res->path);
     }
 
+    // Refine on the atoms actually used (grouped at the chosen sig, or raw
+    // distinct-value atoms after fallback). Then map grouped bounds to raw
+    // element indices. Tuned already Refines on raw atoms.
     const auto stats = lex::detail::refine(a, b, options.tolerance);
-    return summarize_raw(sorted, map_raw(b, elem_start, sig5), D, Dprime, stats, !did_sort);
+    if (map_groups) b = map_raw(b, elem_start, true);
+    return summarize_raw(sorted, std::move(b), D, Dprime, used_sig, stats, !did_sort);
 }
 
 int Result::assign(double x) const {

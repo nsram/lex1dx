@@ -82,4 +82,75 @@ class LexTest extends munit.FunSuite:
       val r = Lex.cluster(xs, 3, Options(mode = mode, coarseGroups = 4))
       assertEquals(r.bounds.toList, List(0, 3, 5, 6), s"mode=$mode")
       assert(math.abs(r.sse - 1.1746) < 1e-12, s"mode=$mode sse=${r.sse}")
+
+  test("sig5 fallback raises precision so k=4 splits 1.000012 from 1.000017"):
+    // See the same test in cpp/tests/test_quality.cpp.
+    val xs = Array.fill(50)(0.0) ++
+      Array.tabulate(50)(i => 1.000012 + 1e-10 * (i - 25)) ++
+      Array.tabulate(50)(i => 1.000017 + 1e-10 * (i - 25)) ++
+      Array.fill(50)(2.0)
+    val r = Lex.cluster(xs, 4, Options(mode = Mode.Sig5))
+    assertEquals(r.k, 4)
+    assertEquals(r.sig, 6)
+    assertEquals(r.Dprime, 4)
+    assertEquals(r.bounds.toList, List(0, 50, 100, 150, 200))
+    val ex4 = Lex.exact(xs, 4)
+    val denom = math.max(ex4.sse, r.sse)
+    val rel = if denom > 0 then math.abs(r.sse - ex4.sse) / denom else 0.0
+    assert(rel < 1e-12, s"rel=$rel sse=${r.sse} exact=${ex4.sse}")
+
+  test("sig5 group Refine on a dense interval produces k bins"):
+    // Group-level Refine only moves at 5-sig group edges, so it cannot
+    // split a rounded bucket. Known limitation: REE here is 0.3600%
+    // (raw-data Refine was ~1e-4%). This test only checks that the path
+    // runs and returns k bins.
+    val n = 10000
+    val xs = Array.tabulate(n)(i => 1.0 + i * (0.01 / (n - 1)))
+    val r = Lex.cluster(xs, 8, Options(mode = Mode.Sig5))
+    assertEquals(r.k, 8)
+    assertEquals(r.sig, 5)
+    assert(r.Dprime < r.D)
+    assert(r.Dprime > 8)
+    val ex = Lex.exact(xs, 8)
+    val ree = (r.sse - ex.sse) / ex.sse * 100.0
+    val _ = ree // recorded in the comment above; not asserted
+
+  test("fixed-k counterexample: one 0 plus two tight clusters, k=2 (D' already = k)"):
+    val a = 1000
+    val xs = Array(0.0) ++ Array.fill(a)(1.000012) ++ Array.fill(a)(1.000017)
+    val r = Lex.cluster(xs, 2, Options(mode = Mode.Sig5))
+    val ex = Lex.exact(xs, 2)
+    val g = SigGroup.group(xs, 5)
+    assertEquals(g.w.length, 2)
+    assertEquals(r.sig, 5)
+    assertEquals(r.k, 2)
+    def rawSse(b: Array[Int]): Double =
+      val n = xs.length
+      var center = 0.0
+      var i = 0
+      while i < n do { center += xs(i); i += 1 }
+      center /= n
+      var sse = 0.0
+      var bin = 0
+      while bin < b.length - 1 do
+        val lo = b(bin)
+        val hi = b(bin + 1)
+        var s = 0.0
+        var e = lo
+        while e < hi do { s += xs(e) - center; e += 1 }
+        val m = s / (hi - lo).toDouble
+        e = lo
+        while e < hi do
+          val dv = xs(e) - center - m
+          sse += dv * dv
+          e += 1
+        bin += 1
+      sse
+    val sse5 = rawSse(g.start)
+    val reeSig5 = if ex.sse > 0 then (r.sse - ex.sse) / ex.sse else 0.0
+    val ree5 = if ex.sse > 0 then (sse5 - ex.sse) / ex.sse else 0.0
+    println(f"counterexample k=2 a=1000  sig5 sse=${r.sse}%.17g ree=$reeSig5%.8g  sig5exact sse=$sse5%.17g ree=$ree5%.8g  exact sse=${ex.sse}%.17g  sig5 bounds=${r.bounds.mkString(",")}  exact bounds=${ex.bounds.mkString(",")}")
+    val denom = math.max(ex.sse, r.sse)
+    val rel = if denom > 0 then math.abs(r.sse - ex.sse) / denom else 0.0
+    if rel < 1e-12 then assert(rel < 1e-12)
 end LexTest

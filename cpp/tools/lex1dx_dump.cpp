@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     const int k = std::atoi(argv[3]);
     const auto xs = load_f64(argv[2]);
     const auto r = lex1dx::cluster(xs, k, o);
-    std::printf("n=%zu k=%d mode=%s D=%d Dprime=%d sse=%.17g sweeps=%d moves=%d\n",
-                xs.size(), r.k(), mode.c_str(), r.D, r.Dprime, r.sse, r.sweeps, r.moves);
+    std::printf("n=%zu k=%d mode=%s D=%d Dprime=%d sig=%d sse=%.17g sweeps=%d moves=%d\n",
+                xs.size(), r.k(), mode.c_str(), r.D, r.Dprime, r.sig, r.sse, r.sweeps, r.moves);
     std::printf("bounds=");
     for (std::size_t i = 0; i < r.bounds.size(); ++i)
         std::printf("%s%d", i ? "," : "", r.bounds[i]);

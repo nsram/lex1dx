@@ -24,6 +24,7 @@ final case class Result(
     sse: Double,
     D: Int,
     Dprime: Int,
+    sig: Int, // significant digits used for grouping; 0 = full precision
     sweeps: Int,
     moves: Int,
     presorted: Boolean
@@ -57,10 +58,23 @@ object Lex:
     val D = countDistinct(sorted)
     val sig5 = options.mode == Mode.Sig5
 
+    var usedSig = 0
+    var mapGroups = false
     val (atoms, elemStart) =
       if sig5 then
-        val g = SigGroup.group(sorted, 5)
-        (Atoms(g.mean, g.w, 0.0), g.start)
+        // Raise precision until there are at least k groups, or we reach raw atoms.
+        var sig = 5
+        var g = SigGroup.group(sorted, sig)
+        while g.w.length < k && g.w.length < D && sig < 15 do
+          sig += 1
+          g = SigGroup.group(sorted, sig)
+        if g.w.length < k && g.w.length < D then
+          usedSig = 0
+          (Atoms(sorted, 0.0), null: Array[Int])
+        else
+          usedSig = sig
+          mapGroups = true
+          (Atoms(g.mean, g.w, 0.0), g.start)
       else
         (Atoms(sorted, 0.0), null: Array[Int])
 
@@ -83,11 +97,14 @@ object Lex:
         // gb is in group-index space [0, G]; map to atom/element indices.
         Array.tabulate(gb.length)(i => groups(gb(i)))
 
+    // Refine on the atoms actually used (grouped at the chosen sig, or raw
+    // distinct-value atoms after fallback). Then map grouped bounds to raw
+    // element indices. Tuned already Refines on raw atoms.
     val boundsWork = b0.clone()
     val refine = Refine(atoms, boundsWork, options.tolerance)
     refine.run()
-    val raw = mapRaw(boundsWork, elemStart, sig5)
-    summarize(sorted, raw, D, Dprime, refine.sweeps, refine.moves, presorted)
+    val raw = if mapGroups then mapRaw(boundsWork, elemStart, true) else boundsWork
+    summarize(sorted, raw, D, Dprime, usedSig, refine.sweeps, refine.moves, presorted)
 
   /** Paper-faithful exact DP, used only as a quality reference in tests. */
   def exact(xs: Array[Double], k: Int): Result =
@@ -100,7 +117,7 @@ object Lex:
     val refine = Refine(atoms, b, 1e-11)
     refine.run()
     refine.sweeps = 0 // keep lex1d exact_largest_cuts convention? tests only need SSE
-    summarize(sorted, b, atoms.d, atoms.d, 0, refine.moves, false)
+    summarize(sorted, b, atoms.d, atoms.d, 0, 0, refine.moves, false)
 
   private def isNonDecreasing(a: Array[Double]): Boolean =
     var i = 1
@@ -149,6 +166,7 @@ object Lex:
       b: Array[Int],
       D: Int,
       Dprime: Int,
+      sig: Int,
       sweeps: Int,
       moves: Int,
       presorted: Boolean
@@ -182,5 +200,5 @@ object Lex:
       bin += 1
     Result(IArray.unsafeFromArray(b.clone()), IArray.unsafeFromArray(counts),
       IArray.unsafeFromArray(means), IArray.unsafeFromArray(upper),
-      sse, D, Dprime, sweeps, moves, presorted)
+      sse, D, Dprime, sig, sweeps, moves, presorted)
 end Lex

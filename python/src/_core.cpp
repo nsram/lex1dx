@@ -33,6 +33,7 @@ nb::dict to_dict(const lex1dx::Result& r) {
     d["sse"] = r.sse;
     d["D"] = r.D;
     d["Dprime"] = r.Dprime;
+    d["sig"] = r.sig;
     d["sweeps"] = r.sweeps;
     d["moves"] = r.moves;
     d["presorted"] = r.presorted;

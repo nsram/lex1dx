@@ -24,6 +24,7 @@ Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M,
         Rcpp::Named("bounds") = r.bounds, Rcpp::Named("sizes") = r.sizes,
         Rcpp::Named("centers") = r.centers, Rcpp::Named("upper") = r.upper,
         Rcpp::Named("sse") = r.sse, Rcpp::Named("D") = r.D, Rcpp::Named("Dprime") = r.Dprime,
+        Rcpp::Named("sig") = r.sig,
         Rcpp::Named("sweeps") = r.sweeps, Rcpp::Named("moves") = r.moves,
         Rcpp::Named("presorted") = r.presorted);
 }
