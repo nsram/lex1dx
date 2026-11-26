@@ -201,7 +201,7 @@ If you use lex1dx, please cite the paper:
 
 Software and data:
 
-- lex1dx v0.1.2: https://doi.org/10.5281/zenodo.24571810 (all versions: https://doi.org/10.5281/zenodo.24544281)
+- lex1dx v0.1.3: https://doi.org/10.5281/zenodo.24572680 (all versions: https://doi.org/10.5281/zenodo.24544281)
 - lex1dx-paper v1.0.0 (scripts, data, figures and tables for the paper): https://doi.org/10.5281/zenodo.24544241
 
 ## Attribution
