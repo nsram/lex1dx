@@ -7,9 +7,10 @@
 #include "detail.hpp"
 
 #include <algorithm>
-#include <charconv>
 #include <climits>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -20,13 +21,18 @@ namespace {
 
 using detail::Atoms;
 
-/// Java's Double.toString spelling for the values that appear in error messages.
+/// Java-like spelling (shortest round-trip) for the values that appear in error messages.
 std::string show(double x) {
     if (std::isnan(x)) return "NaN";
     if (std::isinf(x)) return x > 0 ? "Infinity" : "-Infinity";
+    // Shortest %g spelling that reads back to the same double. std::to_chars(double) would do this,
+    // but it needs gcc 11 or macOS 13.3, which the manylinux2014 and older macOS wheel targets lack.
     char buf[32];
-    auto res = std::to_chars(buf, buf + sizeof buf, x);
-    return std::string(buf, res.ptr);
+    for (int p = 1; p <= 17; ++p) {
+        std::snprintf(buf, sizeof buf, "%.*g", p, x);
+        if (std::strtod(buf, nullptr) == x) break;
+    }
+    return buf;
 }
 
 [[noreturn]] void fail(const std::string& msg) { throw std::invalid_argument(msg); }
