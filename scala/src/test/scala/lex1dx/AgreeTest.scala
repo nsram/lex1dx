@@ -67,10 +67,13 @@ class AgreeTest extends munit.FunSuite:
 end AgreeTest
 
 object AgreeTest:
+  val RelTol = 1e-12
+
   final case class Cell(name: String, mode: String, k: String, kEff: String, D: String, Dp: String, sse: String, bounds: String, centers: String)
 
   def parse(s: String): List[Cell] =
-    s.split("---\n").toList.map(_.trim).filter(_.nonEmpty).flatMap { block =>
+    // Windows C++ writes CRLF line endings; normalize before splitting.
+    s.replace("\r\n", "\n").split("---\n").toList.map(_.trim).filter(_.nonEmpty).flatMap { block =>
       val lines = block.split("\n").map(_.trim)
       if lines.length < 3 then None
       else
@@ -95,13 +98,18 @@ object AgreeTest:
         case (None, _) => Some(s"missing in C++: $k")
         case (_, None) => Some(s"missing in Scala: $k")
         case (Some(x), Some(y)) =>
-          // Compare numeric values, not printf spellings (%.17g vs f"%.17g" can differ
-          // in trailing digits while the IEEE doubles are identical).
+          // Partitions (bounds, D, D') must match exactly. SSE and centers may differ
+          // by a few ulps across compilers, JVMs and CPUs (FMA, summation order),
+          // so they are compared with a relative tolerance.
+          def close(a: Double, b: Double): Boolean =
+            math.abs(a - b) <= AgreeTest.RelTol * math.max(1.0, math.max(math.abs(a), math.abs(b)))
           def sameD(a: String, b: String): Boolean =
-            a.split(",").toList.map(_.toDouble) == b.split(",").toList.map(_.toDouble)
+            val xa = a.split(",").toList.map(_.toDouble)
+            val xb = b.split(",").toList.map(_.toDouble)
+            xa.length == xb.length && xa.zip(xb).forall(close)
           val diffs = List(
             (if x.bounds != y.bounds then Some(s"$k bounds\n  C++   ${x.bounds}\n  Scala ${y.bounds}") else None),
-            (if x.sse.toDouble != y.sse.toDouble then Some(s"$k sse C++=${x.sse} Scala=${y.sse}") else None),
+            (if !close(x.sse.toDouble, y.sse.toDouble) then Some(s"$k sse C++=${x.sse} Scala=${y.sse}") else None),
             (if !sameD(x.centers, y.centers) then Some(s"$k centers differ\n  C++   ${x.centers}\n  Scala ${y.centers}") else None),
             (if x.D != y.D || x.Dp != y.Dp then Some(s"$k D/D' C++=${x.D}/${x.Dp} Scala=${y.D}/${y.Dp}") else None)
           ).flatten
