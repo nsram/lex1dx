@@ -195,9 +195,14 @@ and `docs/examples_output.md` / `docs/examples_output_r.md`.
 
 ## Citation
 
-lex1dx v0.1.0 is archived at https://doi.org/10.5281/zenodo.24544282.
+If you use lex1dx, please cite the paper:
 
-lex1d is at https://github.com/nsram/lex1d and is archived at https://zenodo.org/records/24451573.
+- Sriram, N. (2026). LEX: Fast scalar quantization by grouping and local exchanges. Preprint, Zenodo. https://doi.org/10.5281/zenodo.24543220
+
+Software and data:
+
+- lex1dx v0.1.0: https://doi.org/10.5281/zenodo.24544282
+- lex1dx-paper v1.0.0 (scripts, data, figures and tables for the paper): https://doi.org/10.5281/zenodo.24544241
 
 ## Attribution
 

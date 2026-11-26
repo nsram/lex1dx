@@ -3,7 +3,7 @@ Type: Package
 Title: Fast 1-D k-Means with a 0.01% Relative Excess SSE Tolerance
 Version: 0.1.1
 Authors@R: c(
-    person("Sriram", "Natarajan",
+    person("N.", "Sriram",
            email = "comunaware@gmail.com",
            role = c("aut", "cre", "cph")),
     person("Allan", "Gr\u00f8nlund",
