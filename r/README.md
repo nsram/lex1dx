@@ -1,6 +1,6 @@
 # lex1dx
 
-lex1dx partitions a numeric vector into k contiguous bins of the sorted values.
+lex1dx is fast 1-D k-means clustering. It partitions a numeric vector into k contiguous bins of the sorted values, for scalar quantization, binning and histogram design.
 
 It targets a 0.01% relative-excess-SSE (REE) tolerance.
 
@@ -17,7 +17,7 @@ From a repository checkout, in the `r/` directory:
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD INSTALL lex1dx_0.1.2.tar.gz
+R CMD INSTALL lex1dx_0.1.3.tar.gz
 ```
 
 `configure` and `tools/sync_core.sh` copy the C++ core into `src/` so the package is self-contained.

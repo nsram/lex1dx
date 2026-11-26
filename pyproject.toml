@@ -4,8 +4,9 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "lex1dx"
-version = "0.1.2"
-description = "Fast 1-D k-means with a 0.01% relative-excess-SSE tolerance"
+version = "0.1.3"
+description = "Fast 1-D k-means clustering and scalar quantization with a 0.01% relative-excess-SSE tolerance"
+keywords = ["kmeans", "k-means", "1d", "1-d", "one-dimensional", "univariate", "1d k-means", "1d clustering", "clustering", "scalar quantization", "binning", "histogram", "jenks", "natural breaks"]
 readme = "python/README.md"
 requires-python = ">=3.10"
 license = "MIT"

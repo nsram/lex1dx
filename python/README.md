@@ -1,6 +1,6 @@
 # lex1dx
 
-lex1dx partitions a one-dimensional array into k contiguous bins of the sorted values.
+lex1dx is fast 1-D k-means clustering. It partitions a one-dimensional array into k contiguous bins of the sorted values, for scalar quantization, binning and histogram design.
 
 It targets a 0.01% relative-excess-SSE (REE) tolerance.
 

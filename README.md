@@ -1,6 +1,6 @@
 # lex1dx
 
-lex1dx is a fast 1-D k-means library: it splits a set of numbers into k contiguous bins with least squared error. Uses include scalar quantization, binning and histogram design.
+lex1dx is a fast 1-D k-means clustering library: it splits a set of numbers into k contiguous bins with least squared error. Uses include scalar quantization, binning and histogram design.
 
 It has a C++17 core, Python and R bindings to that core, and a Scala port:
 
@@ -126,7 +126,7 @@ From the `r/` directory, with a C++17 compiler. `configure` copies the C++ core 
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD check --no-manual --no-vignettes lex1dx_0.1.2.tar.gz
+R CMD check --no-manual --no-vignettes lex1dx_0.1.3.tar.gz
 ```
 
 ```r
@@ -201,7 +201,7 @@ If you use lex1dx, please cite the paper:
 
 Software and data:
 
-- lex1dx v0.1.1: https://doi.org/10.5281/zenodo.24571093 (all versions: https://doi.org/10.5281/zenodo.24544281)
+- lex1dx v0.1.2: https://doi.org/10.5281/zenodo.24571810 (all versions: https://doi.org/10.5281/zenodo.24544281)
 - lex1dx-paper v1.0.0 (scripts, data, figures and tables for the paper): https://doi.org/10.5281/zenodo.24544241
 
 ## Attribution

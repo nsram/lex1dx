@@ -1,7 +1,7 @@
 Package: lex1dx
 Type: Package
 Title: Fast 1-D k-Means with a 0.01% Relative Excess SSE Tolerance
-Version: 0.1.2
+Version: 0.1.3
 Authors@R: c(
     person("N.", "Sriram",
            email = "comunaware@gmail.com",
@@ -10,8 +10,9 @@ Authors@R: c(
            role = c("ctb", "cph"),
            comment = "Author of bundled kmeans1d wilber-interp solver")
   )
-Description: Partitions one-dimensional numeric data into k contiguous clusters
-    with a low within-cluster sum of squares. The default tuned pipeline sorts
+Description: Fast one-dimensional k-means clustering, for scalar quantization,
+    binning and histogram design. Partitions one-dimensional numeric data into
+    k contiguous clusters with a low within-cluster sum of squares. The default tuned pipeline sorts
     the data, collapses to M = max(4096, 32k) groups, runs a weighted
     wilber-interp dynamic program, and refines the cuts. Optional grouping
     to 0 through 9 significant digits (mode 'sig5' is an alias for sig 5) is

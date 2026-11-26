@@ -24,7 +24,7 @@ from . import _core
 from . import datasets
 
 __all__ = ["Result", "cluster", "default_M", "datasets", "histogram", "bin_table"]
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 def default_M(k: int) -> int:
