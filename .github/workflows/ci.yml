@@ -40,10 +40,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    env:
-      LEX1DX_AGREE_DIR: ${{ runner.temp }}/lex1dx-agree
     steps:
       - uses: actions/checkout@v5
+      - name: Set agreement dump directory
+        shell: bash
+        run: echo "LEX1DX_AGREE_DIR=$RUNNER_TEMP/lex1dx-agree" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
