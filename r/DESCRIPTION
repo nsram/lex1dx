@@ -1,7 +1,7 @@
 Package: lex1dx
 Type: Package
 Title: Fast 1-D k-Means with a 0.01% Relative Excess SSE Tolerance
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: c(
     person("N.", "Sriram",
            email = "comunaware@gmail.com",

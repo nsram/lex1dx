@@ -126,7 +126,7 @@ From the `r/` directory, with a C++17 compiler. `configure` copies the C++ core 
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD check --no-manual --no-vignettes lex1dx_0.1.1.tar.gz
+R CMD check --no-manual --no-vignettes lex1dx_0.1.2.tar.gz
 ```
 
 ```r

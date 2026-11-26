@@ -17,7 +17,7 @@ From a repository checkout, in the `r/` directory:
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD INSTALL lex1dx_0.1.1.tar.gz
+R CMD INSTALL lex1dx_0.1.2.tar.gz
 ```
 
 `configure` and `tools/sync_core.sh` copy the C++ core into `src/` so the package is self-contained.
