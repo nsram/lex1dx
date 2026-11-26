@@ -11,8 +11,10 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // cluster_fit
-Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M, double tolerance);
-RcppExport SEXP _lex1dx_cluster_fit(SEXP xSEXP, SEXP kSEXP, SEXP modeSEXP, SEXP MSEXP, SEXP toleranceSEXP) {
+Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M, double tolerance,
+                       int sig, Rcpp::Nullable<Rcpp::NumericVector> weights, std::string solver);
+RcppExport SEXP _lex1dx_cluster_fit(SEXP xSEXP, SEXP kSEXP, SEXP modeSEXP, SEXP MSEXP, SEXP toleranceSEXP,
+                                    SEXP sigSEXP, SEXP weightsSEXP, SEXP solverSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -21,7 +23,10 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< std::string >::type mode(modeSEXP);
     Rcpp::traits::input_parameter< double >::type M(MSEXP);
     Rcpp::traits::input_parameter< double >::type tolerance(toleranceSEXP);
-    rcpp_result_gen = Rcpp::wrap(cluster_fit(x, k, mode, M, tolerance));
+    Rcpp::traits::input_parameter< int >::type sig(sigSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< std::string >::type solver(solverSEXP);
+    rcpp_result_gen = Rcpp::wrap(cluster_fit(x, k, mode, M, tolerance, sig, weights, solver));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -49,7 +54,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_lex1dx_cluster_fit", (DL_FUNC) &_lex1dx_cluster_fit, 5},
+    {"_lex1dx_cluster_fit", (DL_FUNC) &_lex1dx_cluster_fit, 8},
     {"_lex1dx_default_M_", (DL_FUNC) &_lex1dx_default_M_, 1},
     {"_lex1dx_bits_to_double_", (DL_FUNC) &_lex1dx_bits_to_double_, 1},
     {NULL, NULL, 0}

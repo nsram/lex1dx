@@ -1,3 +1,8 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 #include "lex1dx/lex1dx.hpp"
 
 #include "detail.hpp"
@@ -34,12 +39,49 @@ void check_finite(const double* xs, std::size_t n) {
                  "; only finite values are allowed");
 }
 
+void check_weights(const double* ws, std::size_t n) {
+    if (ws == nullptr) fail("weights pointer is null");
+    double W = 0;
+    for (std::size_t i = 0; i < n; ++i) {
+        if (!std::isfinite(ws[i]) || ws[i] < 0)
+            fail("weight at index " + std::to_string(i) + " is " + show(ws[i]) +
+                 "; weights must be finite and >= 0");
+        W += ws[i];
+    }
+    if (!(W > 0) || !std::isfinite(W))
+        fail("weights must sum to a positive finite total, got " + show(W));
+}
+
+int resolve_sig(const Options& options) {
+    if (options.sig == -1) return options.mode == Mode::Sig5 ? 5 : 0;
+    if (options.sig < 0 || options.sig > 9) {
+        fail("sig must be an integer in 0..9, got " + std::to_string(options.sig) +
+             ". Use sig=0 for full precision");
+    }
+    return options.sig;
+}
+
 int count_distinct(const std::vector<double>& sorted) {
     if (sorted.empty()) return 0;
     int d = 1;
     for (std::size_t i = 1; i < sorted.size(); ++i)
         if (sorted[i] != sorted[i - 1]) ++d;
     return d;
+}
+
+void apply_user_weights(siggroup::Groups& g, const std::vector<double>& sorted,
+                        const std::vector<double>& wts) {
+    const int G = static_cast<int>(g.start.size()) - 1;
+    for (int i = 0; i < G; ++i) {
+        const int lo = g.start[i], hi = g.start[i + 1];
+        double W = 0, S = 0;
+        for (int e = lo; e < hi; ++e) {
+            W += wts[e];
+            S += wts[e] * sorted[e];
+        }
+        g.w[i] = W;
+        g.mean[i] = W > 0 ? S / W : g.mean[i];
+    }
 }
 
 struct Agg { std::vector<double> w, wx, wx2; };
@@ -81,8 +123,26 @@ std::vector<int> wilber_to_bounds(const std::vector<int>& groups,
     return b;
 }
 
-std::vector<int> map_raw(const std::vector<int>& b, const std::vector<int>& elem_start, bool sig5) {
-    if (!sig5) return b;
+std::vector<int> ckmeans_on_groups(const Atoms& a, const std::vector<int>& groups, int kk) {
+    if (a.weighted) return lex::detail::exact_weighted(a, groups, kk);
+    const int G = static_cast<int>(groups.size()) - 1;
+    if (G == a.d && groups == a.start) return lex::detail::exact(a, kk);
+    std::vector<double> means(static_cast<std::size_t>(G));
+    for (int g = 0; g < G; ++g) means[g] = a.mean(groups[g], groups[g + 1]);
+    return lex::detail::exact(groups, means, kk);
+}
+
+std::vector<int> wilber_on_groups(const Atoms& a, const std::vector<int>& groups, int kk) {
+    const Agg agg = agg_atoms(a, groups);
+    kmeans_wilber fn(agg.w, agg.wx, agg.wx2);
+    fn.set_search_strategy(search_strategy::INTERPOLATION);
+    auto res = fn.compute_and_report(static_cast<std::size_t>(kk));
+    if (!res) fail("weighted wilber DP failed");
+    return wilber_to_bounds(groups, res->path);
+}
+
+std::vector<int> map_raw(const std::vector<int>& b, const std::vector<int>& elem_start, bool sig_grouped) {
+    if (!sig_grouped) return b;
     std::vector<int> o(b.size());
     for (std::size_t c = 0; c < b.size(); ++c) o[c] = elem_start[b[c]];
     return o;
@@ -125,35 +185,96 @@ Result summarize_raw(const std::vector<double>& sorted, std::vector<int> b,
     return r;
 }
 
+Result summarize_weighted(const std::vector<double>& sorted, const std::vector<double>& w,
+                          std::vector<int> b, int D, int Dprime, int sig,
+                          lex::detail::RefineStats stats, bool presorted) {
+    const int k = static_cast<int>(b.size()) - 1;
+    const int n = static_cast<int>(sorted.size());
+    Result r;
+    r.sizes.resize(k);
+    r.centers.resize(k);
+    r.upper.resize(k);
+    double Wtot = 0, Stot = 0;
+    for (int e = 0; e < n; ++e) {
+        Wtot += w[e];
+        Stot += w[e] * sorted[e];
+    }
+    const double center = Stot / Wtot;
+    double sse = 0;
+    for (int i = 0; i < k; ++i) {
+        const int lo = b[i], hi = b[i + 1];
+        double W = 0, S = 0;
+        for (int e = lo; e < hi; ++e) {
+            W += w[e];
+            S += w[e] * (sorted[e] - center);
+        }
+        const double m = W == 0 ? 0.0 : S / W;
+        if (W > 0) {
+            for (int e = lo; e < hi; ++e) {
+                const double dv = sorted[e] - center - m;
+                sse += w[e] * dv * dv;
+            }
+        }
+        r.sizes[i] = hi - lo;
+        r.centers[i] = center + m;
+        r.upper[i] = sorted[hi - 1];
+    }
+    r.bounds = std::move(b);
+    r.sse = sse;
+    r.D = D;
+    r.Dprime = Dprime;
+    r.sig = sig;
+    r.sweeps = stats.sweeps;
+    r.moves = stats.moves;
+    r.presorted = presorted;
+    return r;
+}
+
 } // namespace
 
 Result cluster(const double* xs, std::size_t n, int k, const Options& options) {
+    return cluster(xs, n, k, nullptr, options);
+}
+
+Result cluster(const double* xs, std::size_t n, int k, const double* weights, const Options& options) {
     check_finite(xs, n);
     if (k < 1) fail("k must be at least 1, got " + std::to_string(k));
     if (!(options.tolerance > 0 && options.tolerance < 1))
         fail("tolerance must be in (0, 1), got " + show(options.tolerance));
+    int used_sig = resolve_sig(options);
+    const bool weighted = (weights != nullptr);
+    if (weighted) check_weights(weights, n);
 
     std::vector<double> sorted(xs, xs + n);
-    const bool did_sort = lex::detail::sort_values(sorted);
+    std::vector<double> wts;
+    bool did_sort;
+    if (weighted) {
+        wts.assign(weights, weights + n);
+        did_sort = lex::detail::sort_pairs(sorted, wts);
+    } else {
+        did_sort = lex::detail::sort_values(sorted);
+    }
     const int D = count_distinct(sorted);
-    const bool sig5 = (options.mode == Mode::Sig5);
 
     std::vector<int> elem_start;
     std::unique_ptr<Atoms> storage;
-    int used_sig = 0;
     bool map_groups = false;
-    if (sig5) {
+    if (used_sig > 0) {
         // Raise precision until there are at least k groups, or we reach raw atoms.
-        int sig = 5;
+        // This is the v0.1.0 k-preserving fallback, starting from the requested sig.
+        int sig = used_sig;
         auto g = siggroup::group_fast(sorted, sig);
+        if (weighted) apply_user_weights(g, sorted, wts);
         while (static_cast<int>(g.w.size()) < k &&
                static_cast<int>(g.w.size()) < D &&
                sig < 15) {
             ++sig;
             g = siggroup::group_fast(sorted, sig);
+            if (weighted) apply_user_weights(g, sorted, wts);
         }
         if (static_cast<int>(g.w.size()) < k && static_cast<int>(g.w.size()) < D) {
-            storage = std::make_unique<Atoms>(sorted, 0.0);
+            if (weighted) storage = std::make_unique<Atoms>(sorted, wts, 0.0);
+            else storage = std::make_unique<Atoms>(sorted, 0.0);
             used_sig = 0;
         } else {
             used_sig = sig;
@@ -162,6 +283,8 @@ Result cluster(const double* xs, std::size_t n, int k, const Options& options) {
             storage = std::make_unique<Atoms>(std::move(g.mean), std::move(g.w), 0.0);
             map_groups = true;
         }
+    } else if (weighted) {
+        storage = std::make_unique<Atoms>(sorted, wts, 0.0);
     } else {
         storage = std::make_unique<Atoms>(sorted, 0.0);
     }
@@ -171,33 +294,31 @@ Result cluster(const double* xs, std::size_t n, int k, const Options& options) {
     int kk = k;
     if (kk > a.d) kk = a.d;
 
-    const std::size_t Mreq = options.coarse_groups == 0 ? default_M(k) : options.coarse_groups;
-    const int m = static_cast<int>(std::max<std::size_t>(static_cast<std::size_t>(kk),
-                                                         std::min<std::size_t>(Mreq, static_cast<std::size_t>(a.d))));
-
     std::vector<int> groups;
-    if (m >= a.d) groups = a.start;
-    else groups = tuned_collapse(a, m, nullptr);
+    if (options.mode == Mode::Exact) {
+        groups = a.start;
+    } else {
+        const std::size_t Mreq = options.coarse_groups == 0 ? default_M(k) : options.coarse_groups;
+        const int m = static_cast<int>(std::max<std::size_t>(static_cast<std::size_t>(kk),
+                                                             std::min<std::size_t>(Mreq, static_cast<std::size_t>(a.d))));
+        if (m >= a.d) groups = a.start;
+        else groups = tuned_collapse(a, m, nullptr);
+    }
 
     std::vector<int> b;
     if (kk <= 1) {
         b = {0, a.n};
     } else if (kk >= static_cast<int>(groups.size()) - 1) {
         b = groups;
+    } else if (options.solver == Solver::Ckmeans) {
+        b = ckmeans_on_groups(a, groups, kk);
     } else {
-        const Agg agg = agg_atoms(a, groups);
-        kmeans_wilber fn(agg.w, agg.wx, agg.wx2);
-        fn.set_search_strategy(search_strategy::INTERPOLATION);
-        auto res = fn.compute_and_report(static_cast<std::size_t>(kk));
-        if (!res) fail("weighted wilber DP failed");
-        b = wilber_to_bounds(groups, res->path);
+        b = wilber_on_groups(a, groups, kk);
     }
 
-    // Refine on the atoms actually used (grouped at the chosen sig, or raw
-    // distinct-value atoms after fallback). Then map grouped bounds to raw
-    // element indices. Tuned already Refines on raw atoms.
     const auto stats = lex::detail::refine(a, b, options.tolerance);
     if (map_groups) b = map_raw(b, elem_start, true);
+    if (weighted) return summarize_weighted(sorted, wts, std::move(b), D, Dprime, used_sig, stats, !did_sort);
     return summarize_raw(sorted, std::move(b), D, Dprime, used_sig, stats, !did_sort);
 }
 

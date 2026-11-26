@@ -1,3 +1,8 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 // Exact 1-D least-squares partition (optimal k-means in one dimension) by dynamic programming over
 // atoms (runs of equal values), as in Fisher (1958). Each layer is filled by divide and conquer on
 // the monotone optimal split point, which holds because the bin SSE cost satisfies the quadrangle

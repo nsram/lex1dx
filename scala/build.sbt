@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.github.nsram"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.1.1"
 ThisBuild / scalaVersion := "3.3.4"
 ThisBuild / licenses := Seq("MIT" -> url("https://opensource.org/licenses/MIT"))
 

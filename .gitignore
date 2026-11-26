@@ -25,3 +25,5 @@ CMakeCache.txt
 /r/src/symbols.rds
 /r/*.Rcheck/
 /r/*.tar.gz
+/build-san/
+/dist-sdist/

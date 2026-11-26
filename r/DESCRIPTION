@@ -1,19 +1,33 @@
 Package: lex1dx
 Type: Package
-Title: Fast 1-D k-Means with a 0.01% REE Tolerance
-Version: 0.1.0
-Authors@R: person("Sriram", "Natarajan", email = "nsram@users.noreply.github.com",
-    role = c("aut", "cre", "cph"))
-Description: Partitions one-dimensional data into k contiguous clusters with a low
-    within-cluster sum of squares. The default tuned pipeline sorts the data, collapses
-    to M = max(4096, 32k) groups, runs a weighted wilber-interp dynamic program, and
-    refines the cuts. Optional five-significant-digit grouping (mode 'sig5') is provided.
-    The C++ core is shared with the Python and Scala implementations in the same
-    repository. Objectives and defaults differ from 'lex1d', which remains the
+Title: Fast 1-D k-Means with a 0.01% Relative Excess SSE Tolerance
+Version: 0.1.1
+Authors@R: c(
+    person("Sriram", "Natarajan",
+           email = "comunaware@gmail.com",
+           role = c("aut", "cre", "cph")),
+    person("Allan", "Gr\u00f8nlund",
+           role = c("ctb", "cph"),
+           comment = "Author of bundled kmeans1d wilber-interp solver")
+  )
+Description: Partitions one-dimensional numeric data into k contiguous clusters
+    with a low within-cluster sum of squares. The default tuned pipeline sorts
+    the data, collapses to M = max(4096, 32k) groups, runs a weighted
+    wilber-interp dynamic program, and refines the cuts. Optional
+    grouping to 0 through 9 significant digits (mode 'sig5' is an alias for
+    sig 5) is provided, with a k-preserving fallback when grouping would
+    leave fewer than k groups. An exact path, a choice of Fisher or
+    wilber-interp solver, and optional observation weights are also provided.
+    The C++17 core is shared with the Python and Scala implementations in
+    the same repository.
+    Objectives and defaults differ from 'lex1d', which remains the
     paper-faithful exact-quality reference.
 License: MIT + file LICENSE
+URL: https://github.com/nsram/lex1dx
+BugReports: https://github.com/nsram/lex1dx/issues
 Encoding: UTF-8
 Imports: Rcpp
 LinkingTo: Rcpp
-Suggests: testthat (>= 3.0.0)
+Suggests: testthat (>= 3.0.0), knitr, rmarkdown
+VignetteBuilder: knitr
 Config/testthat/edition: 3

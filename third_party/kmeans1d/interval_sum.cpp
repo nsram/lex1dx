@@ -1,8 +1,11 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 #include "interval_sum.hpp"
 #include <vector>
 #include <cstdint>
-#include <iostream>
-#include <cassert>
 
 template<typename T>
 interval_sum<T>::interval_sum(const std::vector<T> &points) : prefix_sum(points.size() + 1),

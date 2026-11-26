@@ -1,8 +1,6 @@
 #ifndef __KMEANS_H__
 #define __KMEANS_H__
 
-#include <stdlib.h>
-#include <stdio.h>
 
 #include <cstdint>
 #include <cstddef>
@@ -76,8 +74,7 @@ private:
     double g(size_t i, size_t j);
 
     std::unique_ptr<kmeans_result> compute_binary_search(size_t k);
-    std::pair<std::unique_ptr<kmeans_result>, bool> compute_interpolation_search(size_t k, bool add_noise_if_loop);
-    std::unique_ptr<kmeans_result> compute_interpolation_search_with_noise(size_t k, double lambda);
+    std::pair<std::unique_ptr<kmeans_result>, bool> compute_interpolation_search(size_t k);
 
   
   double lambda;//what is that used for

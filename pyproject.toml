@@ -1,0 +1,63 @@
+[build-system]
+requires = ["scikit-build-core>=0.10", "nanobind>=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "lex1dx"
+version = "0.1.1"
+description = "Fast 1-D k-means with a 0.01% relative-excess-SSE tolerance"
+readme = "python/README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "NOTICE", "third_party/kmeans1d/LICENSE"]
+authors = [{ name = "Sriram Natarajan" }]
+dependencies = ["numpy>=1.21"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: C++",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/nsram/lex1dx"
+Source = "https://github.com/nsram/lex1dx"
+Issues = "https://github.com/nsram/lex1dx/issues"
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+plot = ["matplotlib"]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.21"
+cmake.source-dir = "python"
+build-dir = "build/{wheel_tag}"
+wheel.packages = ["python/src/lex1dx"]
+sdist.include = [
+  "/CMakeLists.txt",
+  "/LICENSE",
+  "/NOTICE",
+  "/pyproject.toml",
+  "cpp/**",
+  "third_party/kmeans1d/**",
+  "python/CMakeLists.txt",
+  "python/README.md",
+  "python/LICENSE",
+  "python/src/**",
+  "python/tests/*.py",
+  "python/tests/data/**",
+  "docs/img/*.png",
+]
+sdist.exclude = [
+  ".github/**",
+  "r/**",
+  "scala/**",
+  "tools/**",
+  "build/**",
+  "build-san/**",
+  "dist-sdist/**",
+  ".pytest_cache/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]

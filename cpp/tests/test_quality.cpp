@@ -62,7 +62,7 @@ int main() {
     test("sig5 fallback raises precision so k=4 splits 1.000012 from 1.000017", [&] {
         // At 5 significant digits the two tight clusters share the key 1.0000,
         // so D' would be 3. The fallback retries at 6 digits, which separates
-        // them, and the result has 4 bins matching exact k=4.
+        // them, and the result has 4 bins matching exact k=4. Result.sig is 6.
         std::vector<double> xs;
         for (int i = 0; i < 50; ++i) xs.push_back(0.0);
         for (int i = 0; i < 50; ++i) xs.push_back(1.000012 + 1e-10 * (i - 25));
@@ -74,6 +74,12 @@ int main() {
         CHECK(r.sig == 6);
         CHECK(r.Dprime == 4);
         CHECK((r.bounds == std::vector<int>{0, 50, 100, 150, 200}));
+        Options o5; o5.sig = 5;
+        const auto r5 = cluster(xs, 4, o5);
+        CHECK(r5.k() == 4);
+        CHECK(r5.sig == 6);
+        CHECK(r5.Dprime == 4);
+        CHECK(r5.bounds == r.bounds);
         const auto ex4 = lex::ckmeans_exact(xs, 4);
         const double denom = std::max(ex4.sse, r.sse);
         const double rel = denom > 0 ? std::abs(r.sse - ex4.sse) / denom : 0;

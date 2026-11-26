@@ -1,10 +1,21 @@
 # lex1dx
 
-lex1dx is a 1-D k-means library (least-squares partition of a sorted array into k contiguous bins).
+lex1dx is a fast 1-D k-means library: it splits a set of numbers into k contiguous bins with least squared error. Uses include scalar quantization, binning and histogram design.
+
+It has a C++17 core, Python and R bindings to that core, and a Scala port:
+
+- **C++**: the core library and a command-line tool (`lex1dx_dump`).
+- **Python**: the `lex1dx` package for PyPI, which wraps the C++ core.
+- **R**: the `lex1dx` package for CRAN, which compiles the same C++ core.
+- **Scala**: a JVM port of the same algorithm with the same options, in `scala/`.
+
+All four share one API: `cluster(x, k)` with optional `mode`, `sig`, `M`, `weights` and `solver`. Python, R and Scala bundle two example datasets. Python and R also have `histogram()` and `bin_table()`.
 
 It continues [lex1d](https://github.com/nsram/lex1d) ([Zenodo](https://zenodo.org/records/24451573)).
 
 lex1d stays the paper-faithful exact-quality reference.
+
+Full API docs with examples are in [python/README.md](python/README.md) (the PyPI page), [r/README.md](r/README.md) and the R vignette, and [scala/README.md](scala/README.md).
 
 lex1dx is a new repository because the objectives are different: it targets performance against a 0.01% relative-excess-SSE (REE) tolerance, so its defaults and algorithms are not the same as lex1d.
 
@@ -14,13 +25,24 @@ The default method is the tuned pipeline.
 
 It sorts the data (and canonicalizes `-0` to `+0`).
 
-Optional 5-significant-digit grouping (`Mode::Sig5`) can be turned on; the default `Mode::Tuned` keeps full-precision atoms (exact ties only).
+Optional significant-digit grouping can be turned on with `sig`, an integer in 0..9. `sig = 0` (the default) keeps full precision, so only exact ties are merged. `mode = "sig5"` is an alias for `sig = 5`.
+
+If grouping leaves fewer than k groups while the data have at least k distinct values, lex1dx adds one digit at a time, up to 15, and then falls back to the raw atoms. `Result.sig` reports the digit count actually used.
+
+`mode = "exact"` skips Collapse and runs the chosen solver on all atoms.
+
+Optional `weights` give each value a nonnegative weight. Unique values with their counts as weights give the same bins, SSE and centers as the expanded data.
 
 Collapse uses a 0.75-quantile batch rule and finishes with a heap once at most 16384 merges remain.
 
 The Collapse target is `M = max(4096, 32k)`.
 
-The exact dynamic program on those M groups is replaced by a weighted wilber-interp DP, derived from Grønlund's kmeans1d (commit `585386d`) with a weighted interval-cost patch.
+The dynamic program on those M groups uses one of two exact solvers, chosen with `solver`:
+
+- `"wilber"` (default) is a weighted wilber-interp DP, derived from Grønlund's kmeans1d (commit `585386d`) with a weighted interval-cost patch. It runs in roughly O(kN) time.
+- `"ckmeans"` is the original LEX Fisher DP with divide and conquer, roughly O(kN log N). It follows the conventions of Ckmeans.1d.dp but is independent code.
+
+Both are exact, so they give the same partition up to floating-point ties. Use the default. Use `"ckmeans"` as a cross-check, or when you want the classic Fisher DP. A CI test checks that both give the same partition on athletics20 at k = 5.
 
 Refine is unchanged in role: it locally improves the cuts.
 
@@ -42,8 +64,11 @@ Link the `lex1dx` library and include `<lex1dx/lex1dx.hpp>`:
 #include <lex1dx/lex1dx.hpp>
 lex1dx::Result r = lex1dx::cluster(values, 64);                 // tuned, default M
 lex1dx::Options o;
-o.mode = lex1dx::Mode::Sig5;
+o.sig = 5;
 lex1dx::Result s = lex1dx::cluster(values, 64, o);              // 5-significant-digit grouping
+o.mode = lex1dx::Mode::Exact;
+o.solver = lex1dx::Solver::Ckmeans;
+lex1dx::Result e = lex1dx::cluster(values, 64, o);
 ```
 
 `Result` holds `bounds`, `sizes`, `centers`, `upper`, `sse`, `D`, `Dprime`, and `assign(x)`.
@@ -63,9 +88,11 @@ sbt test
 ```
 
 ```scala
-import lex1dx.{Lex, Options, Mode}
-val r = Lex.cluster(values, 64)
-val s = Lex.cluster(values, 64, Options(mode = Mode.Sig5))
+import lex1dx.{Lex, Options, Mode, Solver, Datasets}
+val x = Datasets.load("athletics20")
+val r = Lex.cluster(x, 4)
+val s = Lex.cluster(x, 4, Options(sig = 5))
+val e = Lex.cluster(x, 4, Options(mode = Mode.Exact, solver = Solver.Ckmeans))
 ```
 
 ## Build and use (Python)
@@ -81,12 +108,16 @@ pytest
 ```python
 import numpy as np
 import lex1dx
-r = lex1dx.cluster(x, 64)                         # tuned, default M
-s = lex1dx.cluster(x, 64, mode="sig5")            # 5-significant-digit grouping
-t = lex1dx.cluster(x, 64, M=8192)                 # override Collapse target
+x = lex1dx.datasets.load("athletics20")
+r = lex1dx.cluster(x, 4)                          # tuned, default M
+s = lex1dx.cluster(x, 4, sig=5)                   # group to 5 significant digits
+e = lex1dx.cluster(x, 4, mode="exact", solver="ckmeans")
+w = lex1dx.cluster(vals, 4, weights=counts)
 ```
 
+`mode="sig5"` is an alias for `sig=5`. `sig` is an integer in 0..9. 0 is full precision.
 `M=None` (the default) uses `default_M(k) = max(4096, 32 * k)`.
+`solver` is `"wilber"` (default) or `"ckmeans"`.
 
 ## Build and use (R)
 
@@ -95,17 +126,48 @@ From the `r/` directory, with a C++17 compiler. `configure` copies the C++ core 
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD check --no-manual --no-vignettes lex1dx_0.1.0.tar.gz
+R CMD check --no-manual --no-vignettes lex1dx_0.1.1.tar.gz
 ```
 
 ```r
 library(lex1dx)
-r <- cluster(x, 64L)                              # tuned, default M
-s <- cluster(x, 64L, mode = "sig5")
-t <- cluster(x, 64L, M = 8192L)
+x <- load_dataset("athletics20")
+r <- cluster(x, 4L)                               # tuned, default M
+s <- cluster(x, 4L, sig = 5L)                     # group to 5 significant digits
+e <- cluster(x, 4L, mode = "exact", solver = "ckmeans")
+w <- cluster(vals, 4L, weights = counts)
 ```
 
+`mode = "sig5"` is an alias for `sig = 5`. `sig` is an integer in 0..9. 0 is full precision.
 `M = NULL` (the default) uses `default_M(k) = max(4096, 32 * k)`.
+`solver` is `"wilber"` (default) or `"ckmeans"`.
+
+## Histogram
+
+`histogram()` in Python and R draws the fitted bins as a horizontal table, one row per bin, from the lowest bin at the top.
+
+Each row shows the bin's range, a bar proportional to its count (or weight), and `[n, pct%, mean]`. The header gives r² and MSE for the k-bin model.
+
+```python
+r = lex1dx.cluster(x, 5)
+lex1dx.histogram(r, x, title="athletics20")      # writes lex1dx_histogram.png
+lex1dx.histogram(r, x, file=None)                 # draw only
+rows = lex1dx.bin_table(r, x)                     # (lo, hi, n, pct, mean) per bin
+```
+
+Python needs matplotlib for `histogram()` (`pip install lex1dx[plot]`). R uses base graphics. `theme = "light"` gives grey bars on white. The default blue theme follows the 2024 Scala audio figures. `bin_table()` returns the same rows as data (a data frame in R).
+
+athletics20, k = 5, Python:
+
+![athletics20, k=5 (Python)](docs/img/histogram_athletics20_k5.png)
+
+athletics20, k = 5, R:
+
+![athletics20, k=5 (R)](docs/img/histogram_athletics20_k5_r.png)
+
+Lognormal sample, n = 10000, k = 32, Python:
+
+![Lognormal, n=10000, k=32 (Python)](docs/img/histogram_lognormal_k32.png)
 
 ## Results (v7 Mac pack)
 
@@ -115,7 +177,25 @@ Those times exclude the sort, because both methods need the same sorted input.
 
 Those figures come from the `bot_v7_scaling_mac_pack` Mac run (270 cells, all ok).
 
+## Example data
+
+Two men's 100 m timing samples are bundled for tests and examples:
+`athletics20` (20 times) and `worldathletics-mens-100m-2379` (2,379 times).
+
+Source: World Athletics 100m all-time lists, retrieved January 2024.
+
+Only the time column is kept. Athlete names and other fields are not included.
+
+Sample Data Attribution: The sample 100m timing datasets (top 20 performances and 2379 all time bests) contain historical athletic performance records compiled from publicly available statistics published by World Athletics (https://worldathletics.org/). These datasets are provided strictly as static benchmark/example inputs for testing and demonstrating the algorithms in this package. This project is not affiliated with, endorsed by, or sponsored by World Athletics.
+
+The precision examples use synthetic lognormal data generated in code with a fixed seed. See the Python and R READMEs.
+
+Worked outputs are in `examples/cluster_athletics.py`, `r/inst/examples/cluster_athletics.R`,
+and `docs/examples_output.md` / `docs/examples_output_r.md`.
+
 ## Citation
+
+lex1dx v0.1.0 is archived at https://doi.org/10.5281/zenodo.24544282.
 
 lex1d is at https://github.com/nsram/lex1d and is archived at https://zenodo.org/records/24451573.
 
@@ -123,4 +203,9 @@ lex1d is at https://github.com/nsram/lex1d and is archived at https://zenodo.org
 
 lex1dx is MIT licensed (see `LICENSE`).
 
-The wilber DP is derived from kmeans1d by Allan Grønlund, commit `585386d4678000691706acdb954911be8fea1c5c`, also MIT; see `NOTICE` and `third_party/kmeans1d/`.
+The wilber DP is derived from kmeans1d by Allan Grønlund, commit `585386d4678000691706acdb954911be8fea1c5c`, also MIT. See `NOTICE` and `third_party/kmeans1d/`.
+
+The `ckmeans` solver is our own implementation of the Fisher (1958) dynamic program in the form described by Wang and Song (2011) for Ckmeans.1d.dp. No Ckmeans.1d.dp code is included.
+
+- Fisher, W. D. (1958). On grouping for maximum homogeneity. *Journal of the American Statistical Association*, 53(284), 789–798.
+- Wang, H. and Song, M. (2011). Ckmeans.1d.dp: Optimal k-means clustering in one dimension by dynamic programming. *The R Journal*, 3(2), 29–33.

@@ -1,3 +1,8 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 // Sorting with an O(n) sorted-input check, and canonical ordering so results do not depend on the
 // input order or on the standard library's sort (see the tie-break rule in README.md).
 #include "detail.hpp"

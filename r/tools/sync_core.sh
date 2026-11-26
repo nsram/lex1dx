@@ -13,3 +13,21 @@ cp "$root/cpp/include/lex1dx/lex1dx.hpp" src/lex1dx/
 cp "$root"/third_party/kmeans1d/*.cpp src/
 cp "$root"/third_party/kmeans1d/*.h src/
 cp "$root"/third_party/kmeans1d/*.hpp src/
+
+# R CMD check warns on .hpp names directly in src/ ("unlikely file names for src
+# files"). Public C++ headers stay as .hpp. Only the copied src-root headers are
+# renamed, and includes in the copied tree are rewritten to match.
+for f in detail interval_sum siggroup tuned_collapse; do
+  if [ -f "src/${f}.hpp" ]; then
+    mv "src/${f}.hpp" "src/${f}.h"
+  fi
+done
+for file in src/*.cpp src/*.h src/*.hpp; do
+  [ -f "$file" ] || continue
+  tmp="$file.tmp$$"
+  sed -e 's/"detail.hpp"/"detail.h"/g' \
+      -e 's/"interval_sum.hpp"/"interval_sum.h"/g' \
+      -e 's/"siggroup.hpp"/"siggroup.h"/g' \
+      -e 's/"tuned_collapse.hpp"/"tuned_collapse.h"/g' \
+      "$file" > "$tmp" && mv "$tmp" "$file"
+done

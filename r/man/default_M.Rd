@@ -11,3 +11,7 @@ default_M(k)
   \item{k}{A whole number, the requested number of bins.}
 }
 \value{An integer.}
+\examples{
+default_M(64L)
+default_M(256L)
+}

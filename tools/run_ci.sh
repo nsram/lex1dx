@@ -15,17 +15,18 @@ if ! command -v sbt >/dev/null; then
 fi
 (cd scala && sbt test)
 
-# Python job: pip install . + pytest, from python/
+# Python job: install from repository root + pytest
 if ! command -v python >/dev/null && ! command -v python3 >/dev/null; then
   echo "python not found" >&2
   exit 1
 fi
 PYTHON="${PYTHON:-python3}"
-(cd python && "$PYTHON" -m pip install . && "$PYTHON" -m pip install pytest && "$PYTHON" -m pytest)
+"$PYTHON" -m pip install . pytest
+"$PYTHON" -m pytest -q
 
-# R job: sync, R CMD build, R CMD check
+# R job: sync, R CMD build, R CMD check --as-cran
 if ! command -v R >/dev/null; then
   echo "R not found (install R and the Rcpp, testthat packages)" >&2
   exit 1
 fi
-(cd r && sh tools/sync_core.sh && R CMD build . && R CMD check --no-manual --no-vignettes lex1dx_0.1.0.tar.gz)
+(cd r && sh tools/sync_core.sh && rm -f lex1dx_*.tar.gz && R CMD build . && R CMD check --no-manual --as-cran lex1dx_*.tar.gz)

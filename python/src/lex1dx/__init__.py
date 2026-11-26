@@ -2,12 +2,16 @@
 
     import numpy as np, lex1dx
     r = lex1dx.cluster(x, 64)
-    s = lex1dx.cluster(x, 64, mode="sig5")
+    s = lex1dx.cluster(x, 64, sig=5)
+    e = lex1dx.cluster(x, 64, mode="exact", solver="ckmeans")
 
-``cluster`` sorts the data, optionally groups to 5 significant digits, runs
-tuned batch Collapse to ``M = default_M(k) = max(4096, 32 * k)`` (or an explicit
-``M``), a weighted wilber-interp DP, and Refine. Errors (empty or non-finite
-input, k < 1, or a bad mode) raise ``ValueError``.
+``cluster`` sorts the data, optionally groups to ``sig`` significant digits
+(0 is full precision), runs tuned batch Collapse to
+``M = default_M(k) = max(4096, 32 * k)`` (or an explicit ``M``), a DP on those
+groups (wilber-interp by default, or the Fisher / ckmeans DP), and Refine.
+``mode="exact"`` skips Collapse. ``mode="sig5"`` is an alias for ``sig=5``.
+Errors (empty or non-finite input, k < 1, a bad mode, solver, sig, or weights)
+raise ``ValueError``.
 """
 from __future__ import annotations
 
@@ -17,9 +21,10 @@ from typing import Optional
 import numpy as np
 
 from . import _core
+from . import datasets
 
-__all__ = ["Result", "cluster", "default_M"]
-__version__ = "0.1.0"
+__all__ = ["Result", "cluster", "default_M", "datasets", "histogram", "bin_table"]
+__version__ = "0.1.1"
 
 
 def default_M(k: int) -> int:
@@ -34,12 +39,12 @@ class Result:
     """A fitted partition of the sorted data. Bin i holds sorted values bounds[i]:bounds[i+1]."""
 
     bounds: np.ndarray   # k + 1 cut indices into the sorted data (int64)
-    sizes: np.ndarray    # values per bin (int64)
-    centers: np.ndarray  # bin means of the raw values
+    sizes: np.ndarray    # values per bin (int64 element counts)
+    centers: np.ndarray  # bin means of the raw values (weighted if weights were given)
     upper: np.ndarray    # largest raw value in each bin
-    sse: float           # sum of squared deviations from the bin means (raw values)
+    sse: float           # sum of squared deviations from the bin means (weighted if weights were given)
     D: int               # distinct values after sort and -0 canonicalization
-    Dprime: int          # atoms after the grouping actually used (equals D for tuned)
+    Dprime: int          # atoms after the grouping actually used (equals D when sig is 0)
     sig: int             # significant digits used for grouping; 0 = full precision
     sweeps: int
     moves: int
@@ -63,16 +68,52 @@ def _vec(a, name: str) -> np.ndarray:
     return v
 
 
-def cluster(x, k: int, *, mode: str = "tuned", M: Optional[int] = None,
-            tolerance: float = 1e-11) -> Result:
+def _sig_arg(sig) -> int:
+    if sig is None:
+        return -1
+    if isinstance(sig, bool) or not isinstance(sig, (int, np.integer)):
+        raise ValueError(f"sig must be an integer in 0..9, got {sig!r}. Use sig=0 for full precision")
+    s = int(sig)
+    if s < 0 or s > 9:
+        raise ValueError(f"sig must be an integer in 0..9, got {s}. Use sig=0 for full precision")
+    return s
+
+
+def cluster(x, k: int, *, mode: str = "tuned", sig: Optional[int] = None,
+            M: Optional[int] = None, tolerance: float = 1e-11,
+            weights=None, solver: str = "wilber") -> Result:
     """Cluster ``x`` into ``k`` contiguous bins of the sorted values.
 
-    ``mode`` is ``"tuned"`` (full-precision atoms) or ``"sig5"`` (group to 5
-    significant digits first). ``M=None`` uses ``default_M(k)``.
+    ``mode`` is ``"tuned"`` (the default pipeline), ``"sig5"`` (an alias for
+    ``sig=5``), or ``"exact"`` (no Collapse; the chosen solver runs on the
+    atoms). ``sig`` is an integer 0..9. 0 means full precision. 1..9 groups
+    to that many significant digits. If that grouping yields fewer than
+    ``k`` groups, precision is raised (up to 15, then raw atoms) so ``k``
+    is kept when the raw data has at least ``k`` distinct values.
+    ``Result.sig`` is the sig actually used (0 if the fallback reached
+    raw atoms). ``None`` follows ``mode``. ``M=None``
+    uses ``default_M(k)``. ``solver`` is ``"wilber"`` (default) or
+    ``"ckmeans"``. Both solvers are exact and give the same optimum.
+    Wilber is faster as k grows, because wilber-interp is O(k N) in
+    style while ckmeans is a divide-and-conquer O(k N log N) DP.
+    ckmeans is the original LEX exact DP and serves as a
+    cross-check. ``weights`` is an optional non-negative finite vector of
+    the same length as ``x``.
     """
-    if mode not in ("tuned", "sig5"):
-        raise ValueError("mode must be 'tuned' or 'sig5'")
+    if mode not in ("tuned", "sig5", "exact"):
+        raise ValueError("mode must be 'tuned', 'sig5', or 'exact'")
+    if solver not in ("wilber", "ckmeans"):
+        raise ValueError("solver must be 'wilber' or 'ckmeans'")
     if M is not None and int(M) < 0:
         raise ValueError(f"M must be >= 0, got {M}")
+    xv = _vec(x, "x")
+    wv = None
+    if weights is not None:
+        wv = _vec(weights, "weights")
+        if wv.shape[0] != xv.shape[0]:
+            raise ValueError("weights size must match input")
     m = 0 if M is None else int(M)
-    return Result(**_core.cluster(_vec(x, "x"), int(k), mode, m, float(tolerance)))
+    return Result(**_core.cluster(xv, int(k), mode, m, float(tolerance),
+                                  _sig_arg(sig), wv, solver))
+
+from .histogram import histogram, bin_table

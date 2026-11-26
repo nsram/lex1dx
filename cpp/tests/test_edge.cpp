@@ -10,6 +10,7 @@
 using lex1dx::cluster;
 using lex1dx::Mode;
 using lex1dx::Options;
+using lex1dx::Solver;
 
 static void rejects(const std::vector<double>& xs, int k, const std::string& fragment, Options o = {}) {
     try {
@@ -86,6 +87,91 @@ int main() {
         }
         CHECK(r.assign(r.upper[0]) == 0);
         CHECK(r.assign(r.upper.back()) == r.k() - 1);
+    });
+
+    test("weights match expanding integer counts; bad weights are rejected", [&] {
+        const std::vector<double> vals{1.0, 2.0, 3.0};
+        const std::vector<double> wts{1.0, 3.0, 1.0};
+        std::vector<double> expanded{1.0, 2.0, 2.0, 2.0, 3.0};
+        const auto rw = cluster(vals, wts, 2);
+        const auto re = cluster(expanded, 2);
+        CHECK(rw.sse == re.sse);
+        CHECK(rw.centers == re.centers);
+        CHECK(static_cast<int>(rw.sizes.size()) == static_cast<int>(re.sizes.size()));
+        for (std::size_t i = 0; i < rw.sizes.size(); ++i) {
+            double mass = 0;
+            for (int e = rw.bounds[i]; e < rw.bounds[i + 1]; ++e) mass += wts[e];
+            CHECK(mass == static_cast<double>(re.sizes[i]));
+        }
+        try {
+            cluster(vals, std::vector<double>{1.0, -1.0, 1.0}, 2);
+            CHECK_MSG(false, "no exception for negative weight");
+        } catch (const std::invalid_argument& e) {
+            CHECK_MSG(std::string(e.what()).find("weights must be finite and >= 0") != std::string::npos, e.what());
+        }
+        try {
+            cluster(vals, std::vector<double>{1.0, std::nan(""), 1.0}, 2);
+            CHECK_MSG(false, "no exception for NaN weight");
+        } catch (const std::invalid_argument& e) {
+            CHECK_MSG(std::string(e.what()).find("weights must be finite and >= 0") != std::string::npos, e.what());
+        }
+        try {
+            cluster(vals, std::vector<double>{0.0, 0.0, 0.0}, 2);
+            CHECK_MSG(false, "no exception for all-zero weights");
+        } catch (const std::invalid_argument& e) {
+            CHECK_MSG(std::string(e.what()).find("positive finite total") != std::string::npos, e.what());
+        }
+        try {
+            (void)cluster(vals, std::vector<double>{1.0, 1.0}, 2);
+            CHECK_MSG(false, "no exception for length mismatch");
+        } catch (const std::invalid_argument& e) {
+            CHECK_MSG(std::string(e.what()).find("weights size must match input") != std::string::npos, e.what());
+        }
+    });
+
+    test("exact solvers agree on SSE; sig 0..9 is validated", [&] {
+        std::vector<double> xs;
+        for (int i = 0; i < 200; ++i) xs.push_back(std::sin(0.17 * i) * 10.0 + 0.01 * i);
+        Options ow; ow.mode = Mode::Exact; ow.solver = Solver::Wilber;
+        Options oc; oc.mode = Mode::Exact; oc.solver = Solver::Ckmeans;
+        const auto rw = cluster(xs, 8, ow);
+        const auto rc = cluster(xs, 8, oc);
+        const double denom = std::max(rw.sse, rc.sse);
+        const double rel = denom > 0 ? std::abs(rw.sse - rc.sse) / denom : 0;
+        CHECK_MSG(rel < 1e-12, "solver SSE rel=" + std::to_string(rel));
+        Options bad; bad.sig = 10;
+        try {
+            cluster(xs, 4, bad);
+            CHECK_MSG(false, "no exception for sig=10");
+        } catch (const std::invalid_argument& e) {
+            const std::string msg(e.what());
+            CHECK_MSG(msg.find("0..9") != std::string::npos, msg);
+            CHECK_MSG(msg.find("sig=0") != std::string::npos, msg);
+        }
+        Options s0; s0.sig = 0;
+        const auto r0 = cluster(xs, 8, s0);
+        const auto rt = cluster(xs, 8, {});
+        CHECK(r0.sig == 0);
+        CHECK(r0.bounds == rt.bounds);
+        CHECK(r0.sse == rt.sse);
+    });
+
+    test("athletics20 k=5: wilber and ckmeans give the same partition", [&] {
+        // time-only athletics20 values (data/athletics20.csv)
+        const std::vector<double> xs = {
+            9.58, 9.69, 9.69, 9.72, 9.74, 9.76, 9.76, 9.76, 9.77, 9.78,
+            9.79, 9.80, 9.80, 9.82, 9.83, 9.83, 9.83, 9.83, 9.84, 9.84
+        };
+        for (Mode mode : {Mode::Exact, Mode::Tuned}) {
+            Options ow; ow.mode = mode; ow.solver = Solver::Wilber;
+            Options oc; oc.mode = mode; oc.solver = Solver::Ckmeans;
+            const auto rw = cluster(xs, 5, ow);
+            const auto rc = cluster(xs, 5, oc);
+            CHECK_MSG(rw.bounds == rc.bounds, mode == Mode::Exact ? "exact bounds" : "tuned bounds");
+            const double denom = std::max(rw.sse, rc.sse);
+            const double rel = denom > 0 ? std::abs(rw.sse - rc.sse) / denom : 0;
+            CHECK_MSG(rel < 1e-12, (mode == Mode::Exact ? "exact rel=" : "tuned rel=") + std::to_string(rel));
+        }
     });
 
     return finish();

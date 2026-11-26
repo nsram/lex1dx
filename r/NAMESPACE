@@ -1,3 +1,6 @@
 useDynLib(lex1dx, .registration = TRUE)
 importFrom(Rcpp, evalCpp)
-export(cluster, default_M)
+importFrom(utils, read.csv)
+export(cluster, default_M, load_dataset, histogram, bin_table)
+importFrom(grDevices, png)
+importFrom(graphics, par, plot.new, plot.window, text, rect)

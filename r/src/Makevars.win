@@ -1,7 +1,6 @@
 CXX_STD = CXX17
 PKG_CPPFLAGS = -I.
-# No fused multiply-add contraction: results stay bit-identical to the C++ library on every platform.
-# Required: without it, FMA hardware (arm64, x86-64 with -march=haswell or later) fuses a*b+c and
-# results change in the last bits. R CMD check warns that this flag is not portable; do not remove
-# it to silence that warning.
-PKG_CXXFLAGS = -ffp-contract=off
+# CRAN prohibits non-portable compiler flags such as -ffp-contract=off in Makevars.
+# FMA contraction is disabled in the C++ sources: `#pragma STDC FP_CONTRACT OFF`
+# on Clang/AppleClang, and `#pragma GCC optimize("-ffp-contract=off")` on GCC.
+# Both pragmas were checked against compiler assembly output.

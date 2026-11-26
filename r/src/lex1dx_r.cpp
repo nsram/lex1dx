@@ -11,15 +11,28 @@
 #include <string>
 
 // [[Rcpp::export(.cluster)]]
-Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M, double tolerance) {
+Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M, double tolerance,
+                       int sig, Rcpp::Nullable<Rcpp::NumericVector> weights, std::string solver) {
     lex1dx::Options o;
     o.tolerance = tolerance;
+    o.sig = sig;
     if (mode == "tuned") o.mode = lex1dx::Mode::Tuned;
     else if (mode == "sig5") o.mode = lex1dx::Mode::Sig5;
-    else throw std::invalid_argument("mode must be 'tuned' or 'sig5'");
+    else if (mode == "exact") o.mode = lex1dx::Mode::Exact;
+    else throw std::invalid_argument("mode must be 'tuned', 'sig5', or 'exact'");
+    if (solver == "wilber") o.solver = lex1dx::Solver::Wilber;
+    else if (solver == "ckmeans") o.solver = lex1dx::Solver::Ckmeans;
+    else throw std::invalid_argument("solver must be 'wilber' or 'ckmeans'");
     if (M < 0 || M != std::floor(M)) throw std::invalid_argument("M must be a whole number >= 0");
     o.coarse_groups = static_cast<std::size_t>(M);
-    const lex1dx::Result r = lex1dx::cluster(x.begin(), static_cast<std::size_t>(x.size()), k, o);
+    const double* wptr = nullptr;
+    if (weights.isNotNull()) {
+        Rcpp::NumericVector w(weights);
+        if (static_cast<std::size_t>(w.size()) != static_cast<std::size_t>(x.size()))
+            throw std::invalid_argument("weights size must match input");
+        wptr = w.begin();
+    }
+    const lex1dx::Result r = lex1dx::cluster(x.begin(), static_cast<std::size_t>(x.size()), k, wptr, o);
     return Rcpp::List::create(
         Rcpp::Named("bounds") = r.bounds, Rcpp::Named("sizes") = r.sizes,
         Rcpp::Named("centers") = r.centers, Rcpp::Named("upper") = r.upper,

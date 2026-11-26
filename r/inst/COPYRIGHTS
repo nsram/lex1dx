@@ -1,0 +1,7 @@
+lex1dx R package
+Copyright (c) 2026 Sriram Natarajan (MIT License)
+
+Includes code derived from kmeans1d (https://github.com/gronlund/kmeans1d,
+commit 585386d4678000691706acdb954911be8fea1c5c):
+Copyright (c) 2020 Allan Grønlund (MIT License)
+Files: src/interval_sum.h, src/interval_sum.cpp, src/kmeans.h, src/kmeans_wilber.cpp

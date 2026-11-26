@@ -17,3 +17,8 @@ lex1dx also disables the interpolation-search "add random noise"
 fallback, which is not deterministic, and silences a debug print on
 set_search_strategy. If the empty-lambda case occurs, clustering fails
 instead of perturbing the points.
+
+For CRAN and library-hygiene compliance, lex1dx also removes unused
+std::cout/std::cerr diagnostics, the dead noise-fallback helper (and its
+std::random_device usage), unused local variable `lo`, and replaces
+`assert(...)` / bare `throw;` with `std::runtime_error`.

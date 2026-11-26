@@ -40,17 +40,31 @@ nb::dict to_dict(const lex1dx::Result& r) {
     return d;
 }
 
-nb::dict cluster_fit(Vec x, int k, const std::string& mode, std::size_t M, double tolerance) {
+nb::dict cluster_fit(Vec x, int k, const std::string& mode, std::size_t M, double tolerance,
+                     int sig, nb::object weights_obj, const std::string& solver) {
     lex1dx::Options o;
     o.tolerance = tolerance;
+    o.sig = sig;
     if (mode == "tuned") o.mode = lex1dx::Mode::Tuned;
     else if (mode == "sig5") o.mode = lex1dx::Mode::Sig5;
-    else throw std::invalid_argument("mode must be 'tuned' or 'sig5'");
+    else if (mode == "exact") o.mode = lex1dx::Mode::Exact;
+    else throw std::invalid_argument("mode must be 'tuned', 'sig5', or 'exact'");
+    if (solver == "wilber") o.solver = lex1dx::Solver::Wilber;
+    else if (solver == "ckmeans") o.solver = lex1dx::Solver::Ckmeans;
+    else throw std::invalid_argument("solver must be 'wilber' or 'ckmeans'");
     o.coarse_groups = M;
+    const double* wptr = nullptr;
+    Vec wkeep;
+    if (!weights_obj.is_none()) {
+        wkeep = nb::cast<Vec>(weights_obj);
+        if (wkeep.shape(0) != x.shape(0))
+            throw std::invalid_argument("weights size must match input");
+        wptr = wkeep.data();
+    }
     lex1dx::Result r;
     {
         nb::gil_scoped_release release;
-        r = lex1dx::cluster(x.data(), x.shape(0), k, o);
+        r = lex1dx::cluster(x.data(), x.shape(0), k, wptr, o);
     }
     return to_dict(r);
 }
@@ -60,6 +74,7 @@ nb::dict cluster_fit(Vec x, int k, const std::string& mode, std::size_t M, doubl
 NB_MODULE(_core, m) {
     m.doc() = "lex1dx C++ core (internal; use the lex1dx package)";
     m.def("cluster", &cluster_fit, nb::arg("x"), nb::arg("k"), nb::arg("mode") = "tuned",
-          nb::arg("M") = 0, nb::arg("tolerance") = 1e-11);
+          nb::arg("M") = 0, nb::arg("tolerance") = 1e-11, nb::arg("sig") = -1,
+          nb::arg("weights") = nb::none(), nb::arg("solver") = "wilber");
     m.def("default_M", &lex1dx::default_M);
 }

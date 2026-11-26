@@ -1,3 +1,8 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 // Greedy adjacent merging (Ward / PNN restricted to neighbours): repeatedly merge the adjacent pair
 // whose merge raises SSE least, until k bins remain. Equal costs merge the leftmost pair: the heap
 // orders by (cost, id), and a tie means exactly equal doubles (no tolerance). This rule only fixes

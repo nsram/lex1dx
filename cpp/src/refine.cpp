@@ -1,3 +1,8 @@
+#if defined(__clang__)
+#pragma STDC FP_CONTRACT OFF
+#elif defined(__GNUC__) && !defined(__clang__)
+#pragma GCC optimize("-ffp-contract=off")
+#endif
 // 3-bin-window refinement. For the window (A, X, B) around bin X, each of X's two bounds can stay,
 // give X's edge piece to the neighbour, or take the neighbour's edge piece: 3 x 3 - 1 = 8 moves.
 // A piece is the part of one atom inside one bin, so moves never split an atom further.
