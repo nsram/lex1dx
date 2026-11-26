@@ -8,13 +8,13 @@ proportional to the count (or weight mass), and the count, percentage,
 and mean. The header reports r-squared and MSE.
 }
 \usage{
-histogram(result, x, file = "lex1dx_histogram.png",
+histogram(result, x, file = NULL,
           weights = NULL, title = "", theme = "default")
 }
 \arguments{
   \item{result}{A result from \code{\link{cluster}}.}
   \item{x}{The numeric vector that was clustered.}
-  \item{file}{A PNG path. The default is \code{"lex1dx_histogram.png"}.
+  \item{file}{A PNG path, or \code{NULL} (the default).
     \code{NULL} draws to the current device and writes no file.}
   \item{weights}{Optional non-negative weights, the same length as
     \code{x}. When given, bar length, \code{n}, and the mean use the

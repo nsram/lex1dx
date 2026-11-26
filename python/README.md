@@ -237,7 +237,7 @@ The default theme is a blue background with yellow bars and monospace text.
 
 Pass `theme="light"` for a white background with dark grey bars.
 
-`file=None` skips writing and returns the Axes.
+The default is `file=None`: draw on the current (or a new) figure, return the Axes, and write no file. Pass `file=` to write a PNG and return that path.
 
 `histogram()` needs matplotlib. Install it with `pip install lex1dx[plot]`.
 

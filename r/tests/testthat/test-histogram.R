@@ -27,3 +27,32 @@ test_that("histogram writes a PNG", {
   close(con)
   expect_identical(magic, as.raw(c(0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)))
 })
+
+test_that("histogram default writes no file", {
+  x <- load_dataset("athletics20")
+  r <- cluster(x, 5L)
+  td <- tempfile("histdef-")
+  dir.create(td)
+  owd <- setwd(td)
+  on.exit(setwd(owd), add = TRUE)
+  grDevices::pdf(tempfile(fileext = ".pdf"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+  out <- histogram(r, x, title = "athletics20")
+  expect_null(out)
+  expect_false(file.exists("lex1dx_histogram.png"))
+  expect_equal(list.files(td), character(0))
+})
+
+test_that("histogram to a file does not write Rplots.pdf", {
+  x <- load_dataset("athletics20")
+  r <- cluster(x, 5L)
+  td <- tempfile("histfile-")
+  dir.create(td)
+  owd <- setwd(td)
+  on.exit(setwd(owd), add = TRUE)
+  f <- "out.png"
+  histogram(r, x, file = f, title = "athletics20")
+  expect_true(file.exists(f))
+  expect_false(file.exists("Rplots.pdf"))
+  expect_identical(list.files(td), "out.png")
+})

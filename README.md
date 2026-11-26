@@ -150,8 +150,8 @@ Each row shows the bin's range, a bar proportional to its count (or weight), and
 
 ```python
 r = lex1dx.cluster(x, 5)
-lex1dx.histogram(r, x, title="athletics20")      # writes lex1dx_histogram.png
-lex1dx.histogram(r, x, file=None)                 # draw only
+lex1dx.histogram(r, x, title="athletics20")       # draw only; no file
+lex1dx.histogram(r, x, file="lex1dx_histogram.png", title="athletics20")
 rows = lex1dx.bin_table(r, x)                     # (lo, hi, n, pct, mean) per bin
 ```
 
@@ -201,7 +201,7 @@ If you use lex1dx, please cite the paper:
 
 Software and data:
 
-- lex1dx v0.1.0: https://doi.org/10.5281/zenodo.24544282
+- lex1dx v0.1.1: https://doi.org/10.5281/zenodo.24571093 (all versions: https://doi.org/10.5281/zenodo.24544281)
 - lex1dx-paper v1.0.0 (scripts, data, figures and tables for the paper): https://doi.org/10.5281/zenodo.24544241
 
 ## Attribution

@@ -32,12 +32,9 @@ std::unique_ptr<kmeans_result> kmeans_wilber::compute_binary_search(size_t k) {
     double lo = 0.0;
     double hi = is.cost_interval_l2(0, n-1);
 
-    size_t cnt = 0;
     double val_found;
     size_t k_found;
     while (true) {
-        ++cnt;
-
         lambda = lo + (hi-lo) / 2;
         std::tie(val_found, k_found) = this->wilber(n);
 

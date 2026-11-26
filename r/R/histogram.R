@@ -91,7 +91,7 @@ bin_table <- function(result, x, weights = NULL) {
 
 # Bars are drawn with rect(), not text glyphs, so the plot needs only ASCII
 # text and works on any png() device (quartz, cairo, Xlib).
-histogram <- function(result, x, file = "lex1dx_histogram.png",
+histogram <- function(result, x, file = NULL,
                       weights = NULL, title = "", theme = "default") {
   if (!theme %in% c("default", "light"))
     stop("theme must be 'default' or 'light'")
@@ -112,14 +112,19 @@ histogram <- function(result, x, file = "lex1dx_histogram.png",
   nlines <- nh + 1 + 2 * k - 1
   fig_w <- max(10, min(14, 0.095 * width_ch))
   fig_h <- 0.40 + 0.22 * nlines
-  if (!is.null(file)) {
+  opened <- !is.null(file)
+  if (opened) {
     grDevices::png(file, width = fig_w, height = fig_h, units = "in",
                    res = 120, bg = bg)
-    on.exit(grDevices::dev.off(), add = TRUE)
   }
   old <- graphics::par(mar = c(0.3, 0.3, 0.3, 0.3), oma = c(0, 0, 0, 0),
                        xaxs = "i", yaxs = "i", bg = bg, family = "mono")
-  on.exit(graphics::par(old), add = TRUE)
+  # Restore par before dev.off(); the reverse order would open Rplots.pdf
+  # in a session with no other device (e.g. Rscript).
+  on.exit({
+    graphics::par(old)
+    if (opened) grDevices::dev.off()
+  }, add = TRUE)
   graphics::plot.new()
   graphics::plot.window(xlim = c(0, 1), ylim = c(nlines + 0.3, -0.3))
   usr <- graphics::par("usr")

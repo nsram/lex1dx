@@ -223,7 +223,7 @@ The default theme is a blue background with yellow bars and monospace text.
 
 Pass `theme = "light"` for a white background with dark grey bars.
 
-`file = NULL` draws to the current device and writes no file.
+The default is `file = NULL`: draw to the current device and write no file. Pass `file =` to write a PNG.
 
 athletics20, k = 5:
 

@@ -121,7 +121,7 @@ def _lines(result, x, weights=None, title: str = ""):
 def histogram(
     result,
     x,
-    file: Optional[str] = "lex1dx_histogram.png",
+    file: Optional[str] = None,
     ax=None,
     weights=None,
     title: str = "",
@@ -138,9 +138,10 @@ def histogram(
     after the 2024 Scala audio figures. ``theme="light"`` is a white
     background with dark grey bars and black text.
 
-    By default the figure is written to ``file`` (``lex1dx_histogram.png``)
-    and that path is returned. Pass ``file=None`` to skip writing and
-    return the Axes. If ``ax`` is given, the plot is drawn on it.
+    The default is ``file=None``: the plot is drawn on ``ax`` if given,
+    otherwise on ``plt.gca()`` or a new figure, and the Axes is returned.
+    No file is written, and ``plt.show`` is not called. If ``file`` is a
+    path, a PNG is written there and that path is returned.
 
     matplotlib is imported only inside this function. Install it with
     ``pip install lex1dx[plot]``.
@@ -164,14 +165,24 @@ def histogram(
     fig_w = max(10.0, min(14.0, 0.095 * width_ch))
     fig_h = 0.40 + 0.22 * nlines
 
-    if ax is None:
+    if ax is not None:
+        fig = ax.figure
+        owned = False
+    elif file is not None:
         fig = Figure(figsize=(fig_w, fig_h), facecolor=colors["bg"])
         FigureCanvasAgg(fig)
         ax = fig.add_subplot(111)
         owned = True
     else:
-        fig = ax.figure
-        owned = False
+        import matplotlib.pyplot as plt
+        if plt.get_fignums():
+            ax = plt.gca()
+            fig = ax.figure
+            owned = False
+        else:
+            fig = plt.figure(figsize=(fig_w, fig_h), facecolor=colors["bg"])
+            ax = fig.add_subplot(111)
+            owned = True
 
     ax.set_facecolor(colors["bg"])
     ax.set_xlim(0, width_ch)

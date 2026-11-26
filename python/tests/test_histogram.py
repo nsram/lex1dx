@@ -47,3 +47,18 @@ def test_histogram_file_none_returns_axes():
     r = lex1dx.cluster(x, 5)
     ax = lex1dx.histogram(r, x, file=None, theme="light")
     assert isinstance(ax, Axes)
+
+
+def test_histogram_default_writes_no_file(tmp_path, monkeypatch):
+    from matplotlib.axes import Axes
+    import matplotlib.pyplot as plt
+
+    monkeypatch.chdir(tmp_path)
+    x = lex1dx.datasets.load("athletics20")
+    r = lex1dx.cluster(x, 5)
+    plt.close("all")
+    ax = lex1dx.histogram(r, x, title="athletics20")
+    assert isinstance(ax, Axes)
+    assert not (tmp_path / "lex1dx_histogram.png").exists()
+    assert list(tmp_path.iterdir()) == []
+    plt.close("all")

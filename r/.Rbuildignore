@@ -4,3 +4,9 @@
 ^tools/
 ^configure$
 ^configure\.win$
+^lex1dx\.Rcheck$
+^lex1dx_.*\.tar\.gz$
+^Rplots\.pdf$
+^lex1dx_histogram\.png$
+^src/.*\.(o|so|dll)$
+^src/symbols\.rds$
