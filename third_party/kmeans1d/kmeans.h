@@ -92,7 +92,7 @@ class kmeans_dp : public kmeans {
 public:
     kmeans_dp(const std::vector<double> &points);
     virtual ~kmeans_dp() {};
-    virtual std::unique_ptr<kmeans_result> compute(size_t k) = 0;
+    std::unique_ptr<kmeans_result> compute(size_t k) override = 0;
     std::unique_ptr<kmeans_result> compute_and_report(size_t k) override;
     virtual std::unique_ptr<kmeans_dp> get_instance(std::vector<double> &points) = 0;
   double report(std::vector<double> &points, size_t k, std::vector<double> &centers);
@@ -146,8 +146,8 @@ public:
 class kmeans_lloyd : public kmeans {
 public:
     kmeans_lloyd();
-    virtual std::unique_ptr<kmeans_result> compute(size_t k) = 0;
-    virtual std::unique_ptr<kmeans_result> compute_and_report(size_t k) = 0;
+    std::unique_ptr<kmeans_result> compute(size_t k) override = 0;
+    std::unique_ptr<kmeans_result> compute_and_report(size_t k) override = 0;
     virtual void set_seed(std::mt19937::result_type val);
     std::mt19937::result_type random_value();
     std::vector<size_t> init_splits(size_t n, size_t k);
