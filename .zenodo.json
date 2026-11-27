@@ -1,6 +1,5 @@
 {
-  "title": "nsram/lex1dx: lex1dx v0.1.4",
-  "description": "<p>When the default Wilber solver's λ search fails (an empty interval, typically on collinear SSE*(k), for example a regular grid or cluster([0, 1, 2, 3], 3)), lex1dx falls back to the Fisher / Ckmeans DP instead of throwing. If that fallback's back-pointer table would exceed 2 GiB, the table is not allocated and a clear error is raised. The result now includes solver_used (\"wilber\" or \"ckmeans\"). The R tolerance argument is checked to lie in (0, 1), matching the C++ core. The maintainer ORCID is recorded.</p>",
+  "description": "<p>lex1dx is a fast 1-D k-means clustering library: it splits a set of numbers into k contiguous bins with least squared error. Uses include scalar quantization, binning and histogram design.</p><p>It has a C++17 core, Python and R bindings to that core, and a Scala port. All four share one API: cluster(x, k) with optional mode, sig, M, weights and solver. Python, R and Scala bundle two example datasets. Python and R also have histogram() and bin_table().</p><p>The method is described in the paper LEX: Fast scalar quantization by grouping and local exchanges (Sriram, 2026), https://doi.org/10.5281/zenodo.24543220.</p>",
   "upload_type": "software",
   "access_right": "open",
   "license": "mit-license",
@@ -8,14 +7,6 @@
     {
       "name": "N. Sriram",
       "orcid": "0009-0001-8909-0676"
-    }
-  ],
-  "related_identifiers": [
-    {
-      "identifier": "https://github.com/nsram/lex1dx/tree/v0.1.4",
-      "relation": "isSupplementTo",
-      "resource_type": "software",
-      "scheme": "url"
     }
   ]
 }

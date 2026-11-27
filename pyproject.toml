@@ -23,6 +23,7 @@ classifiers = [
 Homepage = "https://github.com/nsram/lex1dx"
 Source = "https://github.com/nsram/lex1dx"
 Issues = "https://github.com/nsram/lex1dx/issues"
+Changelog = "https://github.com/nsram/lex1dx/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 test = ["pytest>=7"]

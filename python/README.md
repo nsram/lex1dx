@@ -330,3 +330,13 @@ for d in range(0, 10):
 `mode="sig5"` matches `sig=5` on this sample (`sig=5`, same SSE).
 
 Worked scripts are in [`examples/cluster_athletics.py`](https://github.com/nsram/lex1dx/blob/main/examples/cluster_athletics.py).
+
+## Release history
+
+- **0.1.4** (2026-11-27). When the default Wilber solver's λ search fails (an empty interval, typically on collinear SSE*(k)), lex1dx falls back to the Fisher / Ckmeans DP instead of throwing, with a 2 GiB table cap. The result includes `solver_used`. The R `tolerance` check now matches the C++ core.
+- **0.1.3** (2026-11-26). Search keywords and k-means descriptions; no code changes.
+- **0.1.2** (2026-11-26). `histogram()` in Python no longer writes a file by default; R and Python now match.
+- **0.1.1** (2026-11-26). First release on PyPI. Adds `histogram()` and `bin_table()` in Python and R, and wheels for Python 3.10–3.13 on Linux (manylinux_2_28), macOS 10.15+ and Windows.
+- **0.1.0** (2026-11-25). First public release: C++ core with Python and R bindings, full-precision and precision-grouped (sig5) modes.
+
+The full changelog is at https://github.com/nsram/lex1dx/blob/main/CHANGELOG.md.
