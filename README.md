@@ -13,7 +13,7 @@ All four share one API: `cluster(x, k)` with optional `mode`, `sig`, `M`, `weigh
 
 The method is described in the paper [LEX: Fast scalar quantization by grouping and local exchanges](https://doi.org/10.5281/zenodo.24543220) (Sriram, 2026).
 
-Full API docs with examples are in [python/README.md](python/README.md) (the PyPI page), [r/README.md](r/README.md) and the R vignette, and [scala/README.md](scala/README.md).
+Full API docs with examples are in [python/README.md](https://github.com/nsram/lex1dx/blob/main/python/README.md) (the PyPI page), [r/README.md](https://github.com/nsram/lex1dx/blob/main/r/README.md) and the R vignette, and [scala/README.md](https://github.com/nsram/lex1dx/blob/main/scala/README.md).
 
 ## Defaults
 
