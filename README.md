@@ -11,13 +11,9 @@ It has a C++17 core, Python and R bindings to that core, and a Scala port:
 
 All four share one API: `cluster(x, k)` with optional `mode`, `sig`, `M`, `weights` and `solver`. Python, R and Scala bundle two example datasets. Python and R also have `histogram()` and `bin_table()`.
 
-It continues [lex1d](https://github.com/nsram/lex1d) ([Zenodo](https://zenodo.org/records/24451573)).
-
-lex1d stays the paper-faithful exact-quality reference.
+The method is described in the paper [LEX: Fast scalar quantization by grouping and local exchanges](https://doi.org/10.5281/zenodo.24543220) (Sriram, 2026).
 
 Full API docs with examples are in [python/README.md](python/README.md) (the PyPI page), [r/README.md](r/README.md) and the R vignette, and [scala/README.md](scala/README.md).
-
-lex1dx is a new repository because the objectives are different: it targets performance against a 0.01% relative-excess-SSE (REE) tolerance, so its defaults and algorithms are not the same as lex1d.
 
 ## Defaults
 
@@ -203,6 +199,8 @@ Software and data:
 
 - lex1dx v0.1.3: https://doi.org/10.5281/zenodo.24572680 (all versions: https://doi.org/10.5281/zenodo.24544281)
 - lex1dx-paper v1.0.0 (scripts, data, figures and tables for the paper): https://doi.org/10.5281/zenodo.24544241
+
+lex1dx targets a 0.01% relative-excess-SSE (REE) tolerance, so its defaults and algorithms differ from the earlier exact-quality reference, [lex1d](https://github.com/nsram/lex1d).
 
 ## Attribution
 
