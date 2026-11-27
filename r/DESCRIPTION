@@ -1,11 +1,12 @@
 Package: lex1dx
 Type: Package
 Title: Fast 1-D k-Means with a 0.01% Relative Excess SSE Tolerance
-Version: 0.1.3
+Version: 0.1.4
 Authors@R: c(
     person("N.", "Sriram",
            email = "comunaware@gmail.com",
-           role = c("aut", "cre", "cph")),
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0009-0001-8909-0676")),
     person("Allan", "Gr\u00f8nlund",
            role = c("ctb", "cph"),
            comment = "Author of bundled kmeans1d wilber-interp solver")

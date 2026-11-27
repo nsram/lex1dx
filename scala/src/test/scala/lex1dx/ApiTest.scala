@@ -97,4 +97,60 @@ class ApiTest extends munit.FunSuite:
       val denom = math.max(rw.sse, rc.sse)
       val rel = if denom == 0 then 0.0 else math.abs(rw.sse - rc.sse) / denom
       assert(rel < 1e-12, s"$label rel=$rel wilber=${rw.sse} ckmeans=${rc.sse}")
+      assertEquals(rw.solverUsed, "wilber", label)
+      assertEquals(rc.solverUsed, "ckmeans", label)
+
+  def validPartition(r: Result, kk: Int): Unit =
+    assertEquals(r.bounds.length, kk + 1)
+    assertEquals(r.k, kk)
+    var i = 0
+    while i < kk do
+      assert(r.bounds(i) < r.bounds(i + 1))
+      assert(r.counts(i) > 0)
+      i += 1
+
+  test("{0,1,2,3} k=3: wilber falls back to ckmeans, SSE 0.5"):
+    val x = Array(0.0, 1.0, 2.0, 3.0)
+    val rw = Lex.cluster(x, 3)
+    val rc = Lex.cluster(x, 3, Options(solver = Solver.Ckmeans))
+    assertEquals(rw.sse, 0.5)
+    assertEquals(rc.sse, 0.5)
+    assertEquals(rw.bounds.toList, rc.bounds.toList)
+    assertEquals(rw.solverUsed, "ckmeans")
+    assertEquals(rc.solverUsed, "ckmeans")
+    validPartition(rw, 3)
+
+  test("0..255 k=27: wilber falls back and matches ckmeans"):
+    val x = Array.tabulate(256)(_.toDouble)
+    val rw = Lex.cluster(x, 27)
+    val rc = Lex.cluster(x, 27, Options(solver = Solver.Ckmeans))
+    assertEquals(rw.solverUsed, "ckmeans")
+    assertEquals(rw.bounds.toList, rc.bounds.toList)
+    assertEquals(rw.sse, rc.sse)
+    validPartition(rw, 27)
+
+  test("skipped DP: solverUsed mirrors the requested solver"):
+    val ties = Array.fill(20)(2.0)
+    val rw = Lex.cluster(ties, 8)
+    val rc = Lex.cluster(ties, 8, Options(solver = Solver.Ckmeans))
+    assertEquals(rw.k, 1)
+    assertEquals(rw.solverUsed, "wilber")
+    assertEquals(rc.solverUsed, "ckmeans")
+    val xs = Array(1.0, 2.0, 3.0, 1.0, 2.0)
+    val cw = Lex.cluster(xs, 10)
+    val cck = Lex.cluster(xs, 10, Options(solver = Solver.Ckmeans))
+    assertEquals(cw.k, 3)
+    assertEquals(cw.solverUsed, "wilber")
+    assertEquals(cck.solverUsed, "ckmeans")
+
+  test("ckmeans fallback cap fires as RuntimeException without allocating"):
+    // C++ layout 511*16385*4 is ~31.9 MiB, under the cap.
+    Lex.checkCkmeansFallbackBudget(512, 16384, unweighted = false)
+    val ex = intercept[RuntimeException] {
+      Lex.checkCkmeansFallbackBudget(512, 7_000_000, unweighted = false)
+    }
+    assert(ex.getMessage.contains("2 GiB cap"))
+    assert(ex.getMessage.contains("mode=\"tuned\""))
+    // Must not be IllegalStateException, or the Wilber catch would swallow it.
+    assert(!ex.isInstanceOf[IllegalStateException])
 end ApiTest

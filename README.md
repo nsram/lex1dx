@@ -38,7 +38,7 @@ The dynamic program on those M groups uses one of two exact solvers, chosen with
 - `"wilber"` (default) is a weighted wilber-interp DP, derived from Grønlund's kmeans1d (commit `585386d`) with a weighted interval-cost patch. It runs in roughly O(kN) time.
 - `"ckmeans"` is the original LEX Fisher DP with divide and conquer, roughly O(kN log N). It follows the conventions of Ckmeans.1d.dp but is independent code.
 
-Both are exact, so they give the same partition up to floating-point ties. Use the default. Use `"ckmeans"` as a cross-check, or when you want the classic Fisher DP. A CI test checks that both give the same partition on athletics20 at k = 5.
+Both are exact and, when Wilber returns, give the same partition up to floating-point ties. On some inputs Wilber's λ search can fail (an empty interval). The cause is collinear SSE*(k), e.g. regular grids or equally spaced values with equal counts, not ties. lex1dx then uses the Fisher / ckmeans solver, which is also exact. If that fallback's back-pointer table would exceed 2 GiB (possible in mode="exact" when D is large), lex1dx does not allocate the table and raises an error suggesting mode="tuned" or a smaller k. `Result.solver_used` is `"wilber"` or `"ckmeans"` and records which DP actually ran (when the DP is skipped, it mirrors the requested solver). Use the default. Use `"ckmeans"` as a cross-check, or when you want the classic Fisher DP. A CI test checks that both give the same partition on athletics20 at k = 5.
 
 Refine is unchanged in role: it locally improves the cuts.
 
@@ -122,7 +122,7 @@ From the `r/` directory, with a C++17 compiler. `configure` copies the C++ core 
 ```
 sh tools/sync_core.sh
 R CMD build .
-R CMD check --no-manual --no-vignettes lex1dx_0.1.3.tar.gz
+R CMD check --no-manual --no-vignettes lex1dx_0.1.4.tar.gz
 ```
 
 ```r

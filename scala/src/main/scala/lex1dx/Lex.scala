@@ -32,7 +32,8 @@ final case class Result(
     sig: Int, // significant digits used for grouping; 0 = full precision
     sweeps: Int,
     moves: Int,
-    presorted: Boolean
+    presorted: Boolean,
+    solverUsed: String = "wilber" // "wilber" or "ckmeans"; mirrors the request if the DP is skipped
 ):
   def k: Int = counts.length
   def assign(x: Double): Int =
@@ -122,15 +123,22 @@ object Lex:
         if m >= atoms.d then atoms.start.clone()
         else Collapse(atoms, m)
 
+    val requested = if options.solver == Solver.Ckmeans then "ckmeans" else "wilber"
+    var solverUsed = requested
     val b0: Array[Int] =
-      if kk <= 1 then Array(0, atoms.n)
-      else if kk >= groups.length - 1 then groups
-      else if options.solver == Solver.Ckmeans then ckmeansOnGroups(atoms, groups, kk)
+      if kk <= 1 then
+        solverUsed = requested
+        Array(0, atoms.n)
+      else if kk >= groups.length - 1 then
+        solverUsed = requested
+        groups
+      else if options.solver == Solver.Ckmeans then
+        solverUsed = "ckmeans"
+        ckmeansOnGroups(atoms, groups, kk)
       else
-        val agg = aggAtoms(atoms, groups)
-        val gb = Wilber.cluster(agg._1, agg._2, agg._3, kk)
-        // gb is in group-index space [0, G]; map to atom/element indices.
-        Array.tabulate(gb.length)(i => groups(gb(i)))
+        wilberOnGroupsOrFallback(atoms, groups, kk) match
+          case (b, true)  => solverUsed = "ckmeans"; b
+          case (b, false) => solverUsed = "wilber"; b
 
     // Refine on the atoms actually used (grouped at the chosen sig, or raw
     // distinct-value atoms after fallback). Then map grouped bounds to raw
@@ -140,9 +148,9 @@ object Lex:
     refine.run()
     val raw = if mapGroups then mapRaw(boundsWork, elemStart, true) else boundsWork
     if weighted then
-      summarizeWeighted(sorted, wts, raw, D, Dprime, usedSig, refine.sweeps, refine.moves, !didSort)
+      summarizeWeighted(sorted, wts, raw, D, Dprime, usedSig, refine.sweeps, refine.moves, !didSort, solverUsed)
     else
-      summarize(sorted, raw, D, Dprime, usedSig, refine.sweeps, refine.moves, !didSort)
+      summarize(sorted, raw, D, Dprime, usedSig, refine.sweeps, refine.moves, !didSort, solverUsed)
 
   /** Paper-faithful exact DP, used only as a quality reference in tests. */
   def exact(xs: Array[Double], k: Int): Result =
@@ -155,7 +163,7 @@ object Lex:
     val refine = Refine(atoms, b, 1e-11)
     refine.run()
     refine.sweeps = 0 // keep lex1d exact_largest_cuts convention? tests only need SSE
-    summarize(sorted, b, atoms.d, atoms.d, 0, 0, refine.moves, false)
+    summarize(sorted, b, atoms.d, atoms.d, 0, 0, refine.moves, false, "ckmeans")
 
   private def resolveSig(options: Options): Int =
     if options.sig == -1 then
@@ -226,6 +234,68 @@ object Lex:
       if W > 0 then g.mean(i) = S / W
       i += 1
 
+
+  private def validGroupBounds(gb: Array[Int], kk: Int, G: Int): Boolean =
+    if gb.length != kk + 1 then false
+    else
+      var ok = gb(0) >= 0 && gb(kk) <= G
+      var i = 0
+      while ok && i < kk do
+        if !(gb(i) < gb(i + 1)) then ok = false
+        if gb(i) < 0 || gb(i) > G then ok = false
+        i += 1
+      ok && gb(kk) >= 0 && gb(kk) <= G
+
+  // C++ layout: (k-1)*(G+1)*4. Scala unweighted Exact uses (k+1)*(G+1)*4.
+  private def ckmeansTableBytes(k: Int, G: Int, unweighted: Boolean): Long =
+    if unweighted then
+      if k < 0 || G < 0 then 0L
+      else
+        val rows = k.toLong + 1L
+        val cols = G.toLong + 1L
+        if cols != 0 && rows > Long.MaxValue / cols then Long.MaxValue
+        else
+          val cells = rows * cols
+          if cells > Long.MaxValue / 4L then Long.MaxValue else cells * 4L
+    else if k <= 1 || G < 0 then 0L
+    else
+      val rows = k.toLong - 1L
+      val cols = G.toLong + 1L
+      if cols != 0 && rows > Long.MaxValue / cols then Long.MaxValue
+      else
+        val cells = rows * cols
+        if cells > Long.MaxValue / 4L then Long.MaxValue else cells * 4L
+
+  private val ckmeansFallbackCapBytes: Long = 2L * 1024L * 1024L * 1024L
+
+  private def checkCkmeansFallbackBudgetImpl(k: Int, G: Int, unweighted: Boolean): Unit =
+    val bytes = ckmeansTableBytes(k, G, unweighted)
+    if bytes > ckmeansFallbackCapBytes then
+      val gib = bytes.toDouble / (1024.0 * 1024.0 * 1024.0)
+      // RuntimeException, not IllegalStateException, so the Wilber catch does not swallow it.
+      throw new RuntimeException(
+        s"Wilber interpolation search failed; the Ckmeans fallback would allocate a (k-1)x(G+1) back-pointer table of $gib GiB, which exceeds the 2 GiB cap. Use mode=\"tuned\", or solver=\"ckmeans\" with a smaller k. (k=$k, G=$G)"
+      )
+
+  private def wilberOnGroupsOrFallback(a: Atoms, groups: Array[Int], kk: Int): (Array[Int], Boolean) =
+    val G = groups.length - 1
+    def fallback(): (Array[Int], Boolean) =
+      checkCkmeansFallbackBudgetImpl(kk, G, !a.weighted)
+      (ckmeansOnGroups(a, groups, kk), true)
+    try
+      val agg = aggAtoms(a, groups)
+      val gb = Wilber.cluster(agg._1, agg._2, agg._3, kk)
+      // Validate in group-index space before groups(gb(i)).
+      if !validGroupBounds(gb, kk, G) then fallback()
+      else (Array.tabulate(gb.length)(i => groups(gb(i))), false)
+    catch
+      case _: IllegalStateException | _: ArrayIndexOutOfBoundsException =>
+        fallback()
+
+  /** Public so tests can assert the 2 GiB cap without allocating the table. */
+  def checkCkmeansFallbackBudget(k: Int, G: Int, unweighted: Boolean = true): Unit =
+    checkCkmeansFallbackBudgetImpl(k, G, unweighted)
+
   private def ckmeansOnGroups(a: Atoms, groups: Array[Int], kk: Int): Array[Int] =
     if a.weighted then Exact.weighted(a, groups, kk)
     else if groups.length - 1 == a.d && Arrays.equals(groups, a.start) then Exact(a, kk)
@@ -284,7 +354,8 @@ object Lex:
       sig: Int,
       sweeps: Int,
       moves: Int,
-      presorted: Boolean
+      presorted: Boolean,
+      solverUsed: String
   ): Result =
     val k = b.length - 1
     val n = sorted.length
@@ -315,7 +386,7 @@ object Lex:
       bin += 1
     Result(IArray.unsafeFromArray(b.clone()), IArray.unsafeFromArray(counts),
       IArray.unsafeFromArray(means), IArray.unsafeFromArray(upper),
-      sse, D, Dprime, sig, sweeps, moves, presorted)
+      sse, D, Dprime, sig, sweeps, moves, presorted, solverUsed)
 
   private def summarizeWeighted(
       sorted: Array[Double],
@@ -326,7 +397,8 @@ object Lex:
       sig: Int,
       sweeps: Int,
       moves: Int,
-      presorted: Boolean
+      presorted: Boolean,
+      solverUsed: String
   ): Result =
     val k = b.length - 1
     val n = sorted.length
@@ -366,5 +438,5 @@ object Lex:
       bin += 1
     Result(IArray.unsafeFromArray(b.clone()), IArray.unsafeFromArray(counts),
       IArray.unsafeFromArray(means), IArray.unsafeFromArray(upper),
-      sse, D, Dprime, sig, sweeps, moves, presorted)
+      sse, D, Dprime, sig, sweeps, moves, presorted, solverUsed)
 end Lex

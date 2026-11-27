@@ -132,13 +132,43 @@ std::vector<int> ckmeans_on_groups(const Atoms& a, const std::vector<int>& group
     return lex::detail::exact(groups, means, kk);
 }
 
-std::vector<int> wilber_on_groups(const Atoms& a, const std::vector<int>& groups, int kk) {
-    const Agg agg = agg_atoms(a, groups);
-    kmeans_wilber fn(agg.w, agg.wx, agg.wx2);
-    fn.set_search_strategy(search_strategy::INTERPOLATION);
-    auto res = fn.compute_and_report(static_cast<std::size_t>(kk));
-    if (!res) fail("weighted wilber DP failed");
-    return wilber_to_bounds(groups, res->path);
+bool valid_k_bounds(const std::vector<int>& b, int kk) {
+    if (static_cast<int>(b.size()) != kk + 1) return false;
+    for (int i = 0; i < kk; ++i)
+        if (!(b[static_cast<std::size_t>(i)] < b[static_cast<std::size_t>(i) + 1]))
+            return false;
+    return true;
+}
+
+std::vector<int> ckmeans_on_groups_guarded(const Atoms& a, const std::vector<int>& groups, int kk) {
+    const int G = static_cast<int>(groups.size()) - 1;
+    check_ckmeans_fallback_budget(kk, G);
+    return ckmeans_on_groups(a, groups, kk);
+}
+
+// Try Wilber; on empty-interval / iteration-cap / other runtime_error, a null
+// result, or a bound vector that is not a valid k-partition, fall back to
+// Ckmeans. The memory cap is checked in the fallback and is not swallowed here.
+// *used_fallback is set when Ckmeans actually ran.
+std::vector<int> wilber_on_groups(const Atoms& a, const std::vector<int>& groups, int kk,
+                                  bool* used_fallback) {
+    if (used_fallback) *used_fallback = false;
+    auto fallback = [&]() {
+        if (used_fallback) *used_fallback = true;
+        return ckmeans_on_groups_guarded(a, groups, kk);
+    };
+    try {
+        const Agg agg = agg_atoms(a, groups);
+        kmeans_wilber fn(agg.w, agg.wx, agg.wx2);
+        fn.set_search_strategy(search_strategy::INTERPOLATION);
+        auto res = fn.compute_and_report(static_cast<std::size_t>(kk));
+        if (!res) return fallback();
+        auto b = wilber_to_bounds(groups, res->path);
+        if (!valid_k_bounds(b, kk)) return fallback();
+        return b;
+    } catch (const std::runtime_error&) {
+        return fallback();
+    }
 }
 
 std::vector<int> map_raw(const std::vector<int>& b, const std::vector<int>& elem_start, bool sig_grouped) {
@@ -149,7 +179,8 @@ std::vector<int> map_raw(const std::vector<int>& b, const std::vector<int>& elem
 }
 
 Result summarize_raw(const std::vector<double>& sorted, std::vector<int> b,
-                     int D, int Dprime, int sig, lex::detail::RefineStats stats, bool presorted) {
+                     int D, int Dprime, int sig, lex::detail::RefineStats stats, bool presorted,
+                     const std::string& solver_used) {
     const int k = static_cast<int>(b.size()) - 1;
     Result r;
     r.sizes.resize(k);
@@ -182,12 +213,14 @@ Result summarize_raw(const std::vector<double>& sorted, std::vector<int> b,
     r.sweeps = stats.sweeps;
     r.moves = stats.moves;
     r.presorted = presorted;
+    r.solver_used = solver_used;
     return r;
 }
 
 Result summarize_weighted(const std::vector<double>& sorted, const std::vector<double>& w,
                           std::vector<int> b, int D, int Dprime, int sig,
-                          lex::detail::RefineStats stats, bool presorted) {
+                          lex::detail::RefineStats stats, bool presorted,
+                          const std::string& solver_used) {
     const int k = static_cast<int>(b.size()) - 1;
     const int n = static_cast<int>(sorted.size());
     Result r;
@@ -227,6 +260,7 @@ Result summarize_weighted(const std::vector<double>& sorted, const std::vector<d
     r.sweeps = stats.sweeps;
     r.moves = stats.moves;
     r.presorted = presorted;
+    r.solver_used = solver_used;
     return r;
 }
 
@@ -305,21 +339,28 @@ Result cluster(const double* xs, std::size_t n, int k, const double* weights, co
         else groups = tuned_collapse(a, m, nullptr);
     }
 
+    const std::string requested = (options.solver == Solver::Ckmeans) ? "ckmeans" : "wilber";
+    std::string solver_used = requested;
     std::vector<int> b;
     if (kk <= 1) {
         b = {0, a.n};
+        solver_used = requested;
     } else if (kk >= static_cast<int>(groups.size()) - 1) {
         b = groups;
+        solver_used = requested;
     } else if (options.solver == Solver::Ckmeans) {
         b = ckmeans_on_groups(a, groups, kk);
+        solver_used = "ckmeans";
     } else {
-        b = wilber_on_groups(a, groups, kk);
+        bool used_fallback = false;
+        b = wilber_on_groups(a, groups, kk, &used_fallback);
+        solver_used = used_fallback ? "ckmeans" : "wilber";
     }
 
     const auto stats = lex::detail::refine(a, b, options.tolerance);
     if (map_groups) b = map_raw(b, elem_start, true);
-    if (weighted) return summarize_weighted(sorted, wts, std::move(b), D, Dprime, used_sig, stats, !did_sort);
-    return summarize_raw(sorted, std::move(b), D, Dprime, used_sig, stats, !did_sort);
+    if (weighted) return summarize_weighted(sorted, wts, std::move(b), D, Dprime, used_sig, stats, !did_sort, solver_used);
+    return summarize_raw(sorted, std::move(b), D, Dprime, used_sig, stats, !did_sort, solver_used);
 }
 
 int Result::assign(double x) const {

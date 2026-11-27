@@ -37,6 +37,7 @@ nb::dict to_dict(const lex1dx::Result& r) {
     d["sweeps"] = r.sweeps;
     d["moves"] = r.moves;
     d["presorted"] = r.presorted;
+    d["solver_used"] = r.solver_used;
     return d;
 }
 

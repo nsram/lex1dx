@@ -11,7 +11,8 @@
 groups (wilber-interp by default, or the Fisher / ckmeans DP), and Refine.
 ``mode="exact"`` skips Collapse. ``mode="sig5"`` is an alias for ``sig=5``.
 Errors (empty or non-finite input, k < 1, a bad mode, solver, sig, or weights)
-raise ``ValueError``.
+raise ``ValueError``. A Wilber-to-Ckmeans fallback that would exceed the 2 GiB
+table cap raises ``RuntimeError``.
 """
 from __future__ import annotations
 
@@ -24,7 +25,7 @@ from . import _core
 from . import datasets
 
 __all__ = ["Result", "cluster", "default_M", "datasets", "histogram", "bin_table"]
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 
 def default_M(k: int) -> int:
@@ -49,6 +50,8 @@ class Result:
     sweeps: int
     moves: int
     presorted: bool      # the input was already sorted, so the sort was skipped
+    solver_used: str     # "wilber" or "ckmeans": the DP that ran, or the requested
+                         # solver if the DP was skipped
 
     @property
     def k(self) -> int:
@@ -93,7 +96,16 @@ def cluster(x, k: int, *, mode: str = "tuned", sig: Optional[int] = None,
     ``Result.sig`` is the sig actually used (0 if the fallback reached
     raw atoms). ``None`` follows ``mode``. ``M=None``
     uses ``default_M(k)``. ``solver`` is ``"wilber"`` (default) or
-    ``"ckmeans"``. Both solvers are exact and give the same optimum.
+    ``"ckmeans"``. Both solvers are exact and, when Wilber returns, give the
+    same optimum (up to floating-point ties). On some inputs Wilber's λ search
+    can fail (an empty interval). The cause is collinear SSE*(k), e.g. regular
+    grids or equally spaced values with equal counts, not ties. lex1dx then
+    uses the Fisher / ckmeans solver, which is also exact. If that fallback's
+    back-pointer table would exceed 2 GiB (possible in mode="exact" when D is
+    large), lex1dx does not allocate the table and raises a ``RuntimeError``
+    suggesting mode="tuned" or a smaller k. ``Result.solver_used`` is
+    ``"wilber"`` or ``"ckmeans"`` and records which DP actually ran (when the
+    DP is skipped, it mirrors the requested solver).
     Wilber is faster as k grows, because wilber-interp is O(k N) in
     style while ckmeans is a divide-and-conquer O(k N log N) DP.
     ckmeans is the original LEX exact DP and serves as a

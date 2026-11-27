@@ -207,4 +207,55 @@ def test_athletics20_k5_solvers_same_partition():
         denom = max(rw.sse, rc.sse)
         rel = 0.0 if denom == 0 else abs(rw.sse - rc.sse) / denom
         assert rel < 1e-12, (mode, rw.sse, rc.sse, rel)
+        assert rw.solver_used == "wilber"
+        assert rc.solver_used == "ckmeans"
+
+
+def _valid_partition(r, kk):
+    assert len(r.bounds) == kk + 1
+    assert r.k == kk
+    for i in range(kk):
+        assert r.bounds[i] < r.bounds[i + 1]
+        assert r.sizes[i] > 0
+
+
+def test_wilber_fallback_grid4_k3():
+    x = [0.0, 1.0, 2.0, 3.0]
+    rw = lex1dx.cluster(x, 3)
+    rc = lex1dx.cluster(x, 3, solver="ckmeans")
+    assert rw.sse == 0.5
+    assert rc.sse == 0.5
+    assert list(rw.bounds) == list(rc.bounds)
+    assert rw.solver_used == "ckmeans"
+    assert rc.solver_used == "ckmeans"
+    _valid_partition(rw, 3)
+    re = lex1dx.cluster(x, 3, mode="exact")
+    assert re.solver_used == "ckmeans"
+    assert re.sse == 0.5
+
+
+def test_wilber_fallback_grid256_k27():
+    x = list(range(256))
+    rw = lex1dx.cluster(x, 27)
+    rc = lex1dx.cluster(x, 27, solver="ckmeans")
+    assert rw.solver_used == "ckmeans"
+    assert list(rw.bounds) == list(rc.bounds)
+    assert rw.sse == rc.sse
+    _valid_partition(rw, 27)
+
+
+def test_skipped_dp_solver_used_mirrors_request():
+    ties = [2.0] * 20
+    rw = lex1dx.cluster(ties, 8)
+    rc = lex1dx.cluster(ties, 8, solver="ckmeans")
+    assert rw.k == 1
+    assert rw.solver_used == "wilber"
+    assert rc.solver_used == "ckmeans"
+    xs = [1.0, 2.0, 3.0, 1.0, 2.0]
+    cw = lex1dx.cluster(xs, 10)
+    cck = lex1dx.cluster(xs, 10, solver="ckmeans")
+    assert cw.k == 3
+    assert cw.solver_used == "wilber"
+    assert cck.solver_used == "ckmeans"
+
 

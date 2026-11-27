@@ -26,21 +26,32 @@ cluster(x, k, mode = "tuned", sig = NULL, M = NULL, tolerance = 1e-11,
     rejected; use \code{sig = 0} for full precision.}
   \item{M}{Collapse target. \code{NULL} (the default) uses \code{default_M(k)}.
     Ignored when \code{mode} is \code{"exact"}.}
-  \item{tolerance}{Refine move tolerance, passed to the C++ core.}
+  \item{tolerance}{Refine move tolerance, a number in (0, 1), passed to the
+    C++ core.}
   \item{weights}{Optional non-negative finite weights, the same length as
     \code{x}. \code{NULL} is the unweighted solver. The result SSE and
     centers are then weighted; \code{sizes} remain element counts.}
   \item{solver}{\code{"wilber"} (the default, modified Grønlund
     wilber-interp DP) or \code{"ckmeans"} (Fisher / ckmeans exact DP).
-    Both solvers are exact and give the same optimum. Wilber is faster
-    as k grows, because wilber-interp is O(k N) in style while ckmeans
-    is a divide-and-conquer O(k N log N) DP. ckmeans is the original
-    LEX exact DP and serves as a cross-check.}
+    Both solvers are exact and, when Wilber returns, give the same
+    optimum (up to floating-point ties). On some inputs Wilber's
+    \eqn{\lambda}{lambda} search can fail (an empty interval). The cause
+    is collinear SSE*(k), e.g. regular grids or equally spaced values
+    with equal counts, not ties. lex1dx then uses the Fisher / ckmeans
+    solver, which is also exact. If that fallback's back-pointer table
+    would exceed 2 GiB (possible in mode \code{"exact"} when D is large),
+    lex1dx does not allocate the table and raises an error suggesting
+    mode \code{"tuned"} or a smaller k. \code{solver_used} in the result
+    is \code{"wilber"} or \code{"ckmeans"} and records which DP actually
+    ran (when the DP is skipped, it mirrors the requested solver).
+    Wilber is faster as k grows, because wilber-interp is O(k N) in
+    style while ckmeans is a divide-and-conquer O(k N log N) DP.
+    ckmeans is the original LEX exact DP and serves as a cross-check.}
 }
 \value{
 A list with \code{bounds}, \code{sizes}, \code{centers}, \code{upper},
 \code{sse}, \code{D}, \code{Dprime}, \code{sig}, \code{sweeps},
-\code{moves}, and \code{presorted}.
+\code{moves}, \code{presorted}, and \code{solver_used}.
 }
 \seealso{
   \code{\link{default_M}}, \code{\link{load_dataset}},

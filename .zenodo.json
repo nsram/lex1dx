@@ -1,0 +1,21 @@
+{
+  "title": "nsram/lex1dx: lex1dx v0.1.4",
+  "description": "<p>When the default Wilber solver's λ search fails (an empty interval, typically on collinear SSE*(k), for example a regular grid or cluster([0, 1, 2, 3], 3)), lex1dx falls back to the Fisher / Ckmeans DP instead of throwing. If that fallback's back-pointer table would exceed 2 GiB, the table is not allocated and a clear error is raised. The result now includes solver_used (\"wilber\" or \"ckmeans\"). The R tolerance argument is checked to lie in (0, 1), matching the C++ core. The maintainer ORCID is recorded.</p>",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "mit-license",
+  "creators": [
+    {
+      "name": "N. Sriram",
+      "orcid": "0009-0001-8909-0676"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/nsram/lex1dx/tree/v0.1.4",
+      "relation": "isSupplementTo",
+      "resource_type": "software",
+      "scheme": "url"
+    }
+  ]
+}

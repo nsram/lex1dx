@@ -171,6 +171,91 @@ int main() {
             const double denom = std::max(rw.sse, rc.sse);
             const double rel = denom > 0 ? std::abs(rw.sse - rc.sse) / denom : 0;
             CHECK_MSG(rel < 1e-12, (mode == Mode::Exact ? "exact rel=" : "tuned rel=") + std::to_string(rel));
+            CHECK_MSG(rw.solver_used == "wilber", "athletics wilber solver_used");
+            CHECK_MSG(rc.solver_used == "ckmeans", "athletics ckmeans solver_used");
+        }
+    });
+
+    auto valid_partition = [](const lex1dx::Result& r, int kk) {
+        CHECK(static_cast<int>(r.bounds.size()) == kk + 1);
+        CHECK(r.k() == kk);
+        for (int i = 0; i < kk; ++i) {
+            CHECK(r.bounds[i] < r.bounds[i + 1]);
+            CHECK(r.sizes[i] > 0);
+        }
+    };
+
+    test("repro {0,1,2,3} k=3: wilber falls back to ckmeans, SSE 0.5", [&] {
+        const std::vector<double> xs{0.0, 1.0, 2.0, 3.0};
+        const auto rw = cluster(xs, 3, {});
+        Options oc; oc.solver = Solver::Ckmeans;
+        const auto rc = cluster(xs, 3, oc);
+        CHECK(rw.sse == 0.5);
+        CHECK(rc.sse == 0.5);
+        CHECK(rw.bounds == rc.bounds);
+        CHECK(rw.solver_used == "ckmeans");
+        CHECK(rc.solver_used == "ckmeans");
+        valid_partition(rw, 3);
+        Options ew; ew.mode = Mode::Exact; ew.solver = Solver::Wilber;
+        const auto re = cluster(xs, 3, ew);
+        CHECK(re.solver_used == "ckmeans");
+        CHECK(re.sse == 0.5);
+    });
+
+    test("repro 0..255 k=27: wilber falls back and matches ckmeans", [&] {
+        std::vector<double> xs(256);
+        for (int i = 0; i < 256; ++i) xs[i] = static_cast<double>(i);
+        const auto rw = cluster(xs, 27, {});
+        Options oc; oc.solver = Solver::Ckmeans;
+        const auto rc = cluster(xs, 27, oc);
+        CHECK(rw.solver_used == "ckmeans");
+        CHECK(rc.solver_used == "ckmeans");
+        CHECK(rw.bounds == rc.bounds);
+        CHECK(rw.sse == rc.sse);
+        valid_partition(rw, 27);
+    });
+
+    test("skipped DP: solver_used mirrors the requested solver", [&] {
+        // all ties: k is clamped to 1, DP is skipped
+        const std::vector<double> ties(20, 2.0);
+        const auto rw = cluster(ties, 8, {});
+        Options oc; oc.solver = Solver::Ckmeans;
+        const auto rc = cluster(ties, 8, oc);
+        CHECK(rw.k() == 1);
+        CHECK(rw.solver_used == "wilber");
+        CHECK(rc.solver_used == "ckmeans");
+        // k >= D: DP skipped, groups used as bins
+        const std::vector<double> xs{1.0, 2.0, 3.0, 1.0, 2.0};
+        const auto cw = cluster(xs, 10, {});
+        Options cc; cc.solver = Solver::Ckmeans;
+        const auto cck = cluster(xs, 10, cc);
+        CHECK(cw.k() == 3);
+        CHECK(cw.solver_used == "wilber");
+        CHECK(cck.solver_used == "ckmeans");
+    });
+
+    test("ckmeans_table_bytes and fallback cap fire without allocating", [&] {
+        CHECK(lex1dx::ckmeans_table_bytes(1, 100) == 0);
+        CHECK(lex1dx::ckmeans_table_bytes(512, 16384) == 511ull * 16385ull * sizeof(int));
+        CHECK(lex1dx::ckmeans_table_bytes(512, 16384) < lex1dx::ckmeans_fallback_cap_bytes);
+        const auto big = lex1dx::ckmeans_table_bytes(512, 7000000);
+        CHECK(big == 511ull * 7000001ull * sizeof(int));
+        CHECK(big > lex1dx::ckmeans_fallback_cap_bytes);
+        // Guard: estimate only, no table allocation. Use a tiny cap check via the public formula.
+        // The runtime guard is exercised by calling cluster in Exact mode with huge D would
+        // be too heavy; we test the predicate the implementation uses.
+        // Guard fires without allocating the table.
+        const int G_over = static_cast<int>(lex1dx::ckmeans_fallback_cap_bytes / 4); // bytes = (G+1)*4 = cap+4
+        const auto over = lex1dx::ckmeans_table_bytes(2, G_over);
+        CHECK(over > lex1dx::ckmeans_fallback_cap_bytes);
+        lex1dx::check_ckmeans_fallback_budget(512, 16384); // under cap: no throw
+        try {
+            lex1dx::check_ckmeans_fallback_budget(2, G_over);
+            CHECK_MSG(false, "cap guard did not throw");
+        } catch (const std::runtime_error& e) {
+            const std::string msg(e.what());
+            CHECK_MSG(msg.find("2 GiB cap") != std::string::npos, msg);
+            CHECK_MSG(msg.find("mode=\"tuned\"") != std::string::npos, msg);
         }
     });
 

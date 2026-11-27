@@ -210,7 +210,9 @@ It is the modified kmeans1d wilber-interp DP.
 
 `solver = "ckmeans"` is the Fisher / ckmeans exact DP.
 
-Both solvers are exact and give the same optimum.
+Both solvers are exact and, when Wilber returns, give the same optimum (up to floating-point ties).
+
+On some inputs Wilber's λ search can fail (an empty interval). The cause is collinear SSE*(k), e.g. regular grids or equally spaced values with equal counts, not ties. lex1dx then uses the Fisher / ckmeans solver, which is also exact. If that fallback's back-pointer table would exceed 2 GiB (possible in mode `"exact"` when D is large), lex1dx does not allocate the table and raises an error suggesting mode `"tuned"` or a smaller k. `solver_used` in the result is `"wilber"` or `"ckmeans"` and records which DP actually ran (when the DP is skipped, it mirrors the requested solver).
 
 Wilber is faster as k grows, because wilber-interp is O(k N) in style while ckmeans is a divide-and-conquer O(k N log N) DP.
 

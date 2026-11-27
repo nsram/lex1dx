@@ -22,7 +22,9 @@ val w = Lex.cluster(vals, 4, counts)                      // observation weights
 
 `Options` has `mode` (`Tuned`, `Sig5`, `Exact`), `sig` (integer 0..9, or -1 to follow `mode`), `solver` (`Wilber`, `Ckmeans`), `coarseGroups` (`M`; 0 uses `defaultM(k)`), and `tolerance` (default `1e-11`).
 
-Both solvers are exact and give the same optimum.
+Both solvers are exact and, when Wilber returns, give the same optimum (up to floating-point ties).
+
+On some inputs Wilber's λ search can fail (an empty interval). The cause is collinear SSE*(k), e.g. regular grids or equally spaced values with equal counts, not ties. lex1dx then uses the Fisher / ckmeans solver, which is also exact. If that fallback's back-pointer table would exceed 2 GiB (possible in `mode = Exact` when D is large), lex1dx does not allocate the table and raises an error suggesting `mode = Tuned` or a smaller k. `Result.solverUsed` is `"wilber"` or `"ckmeans"` and records which DP actually ran (when the DP is skipped, it mirrors the requested solver).
 
 Wilber is the default and is faster as k grows, because wilber-interp is O(k N) in style while ckmeans is a divide-and-conquer O(k N log N) DP.
 

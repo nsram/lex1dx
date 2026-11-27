@@ -39,7 +39,8 @@ Rcpp::List cluster_fit(Rcpp::NumericVector x, int k, std::string mode, double M,
         Rcpp::Named("sse") = r.sse, Rcpp::Named("D") = r.D, Rcpp::Named("Dprime") = r.Dprime,
         Rcpp::Named("sig") = r.sig,
         Rcpp::Named("sweeps") = r.sweeps, Rcpp::Named("moves") = r.moves,
-        Rcpp::Named("presorted") = r.presorted);
+        Rcpp::Named("presorted") = r.presorted,
+        Rcpp::Named("solver_used") = r.solver_used);
 }
 
 // [[Rcpp::export(.default_M)]]

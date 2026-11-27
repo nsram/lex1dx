@@ -188,7 +188,9 @@ It is the modified Grønlund kmeans1d wilber-interp DP.
 
 `solver="ckmeans"` is the Fisher / ckmeans exact DP.
 
-Both solvers are exact and give the same optimum.
+Both solvers are exact and, when Wilber returns, give the same optimum (up to floating-point ties).
+
+On some inputs Wilber's λ search can fail (an empty interval). The cause is collinear SSE*(k), e.g. regular grids or equally spaced values with equal counts, not ties. lex1dx then uses the Fisher / ckmeans solver, which is also exact. If that fallback's back-pointer table would exceed 2 GiB (possible in mode="exact" when D is large), lex1dx does not allocate the table and raises a `RuntimeError` suggesting mode="tuned" or a smaller k. `Result.solver_used` is `"wilber"` or `"ckmeans"` and records which DP actually ran (when the DP is skipped, it mirrors the requested solver).
 
 Wilber is faster as k grows, because wilber-interp is O(k N) in style while ckmeans is a divide-and-conquer O(k N log N) DP.
 
@@ -198,7 +200,7 @@ On `athletics20` with `k=4` and `mode="exact"`, both solvers agree on SSE.
 
 ## Result and assign
 
-The result has `bounds`, `sizes`, `centers`, `upper`, `sse`, `D`, `Dprime`, `sig`, `sweeps`, `moves`, and `presorted`.
+The result has `bounds`, `sizes`, `centers`, `upper`, `sse`, `D`, `Dprime`, `sig`, `sweeps`, `moves`, `presorted`, and `solver_used`.
 
 `bounds` are `k + 1` cut indices into the sorted data.
 

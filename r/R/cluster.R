@@ -32,8 +32,9 @@ cluster <- function(x, k, mode = "tuned", sig = NULL, M = NULL, tolerance = 1e-1
       stop("M must be a whole number >= 0")
     coarse <- as.double(M)
   }
-  if (length(tolerance) != 1L || !is.numeric(tolerance) || !is.finite(tolerance) || tolerance < 0)
-    stop("tolerance must be a finite number >= 0")
+  if (length(tolerance) != 1L || !is.numeric(tolerance) || !is.finite(tolerance) ||
+      !(tolerance > 0 && tolerance < 1))
+    stop("tolerance must be in (0, 1), got ", tolerance)
   w <- NULL
   if (!is.null(weights)) {
     if (!is.numeric(weights) || (!is.null(dim(weights)) && length(dim(weights)) > 1L))

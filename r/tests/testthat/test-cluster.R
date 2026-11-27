@@ -148,6 +148,60 @@ test_that("athletics20, k = 5: wilber and ckmeans give the same partition", {
     denom <- max(rw$sse, rc$sse)
     rel <- if (denom == 0) 0 else abs(rw$sse - rc$sse) / denom
     expect_lt(rel, 1e-12, label = mode)
+    expect_identical(rw$solver_used, "wilber")
+    expect_identical(rc$solver_used, "ckmeans")
   }
+})
+
+test_that("tolerance must be in (0, 1)", {
+  x <- c(1, 2, 3, 4)
+  expect_error(cluster(x, 2L, tolerance = 0), "tolerance must be in")
+  expect_error(cluster(x, 2L, tolerance = 1), "tolerance must be in")
+  expect_error(cluster(x, 2L, tolerance = -1e-11), "tolerance must be in")
+  expect_error(cluster(x, 2L, tolerance = 2), "tolerance must be in")
+  expect_silent(cluster(x, 2L, tolerance = 1e-11))
+})
+
+valid_partition <- function(r, kk) {
+  expect_length(r$bounds, kk + 1L)
+  expect_equal(length(r$sizes), kk)
+  for (i in seq_len(kk)) {
+    expect_lt(r$bounds[i], r$bounds[i + 1L])
+    expect_gt(r$sizes[i], 0)
+  }
+}
+
+test_that("wilber falls back on {0,1,2,3} k=3 and 0:255 k=27", {
+  rw <- cluster(c(0, 1, 2, 3), 3L)
+  rc <- cluster(c(0, 1, 2, 3), 3L, solver = "ckmeans")
+  expect_equal(rw$sse, 0.5)
+  expect_equal(rc$sse, 0.5)
+  expect_identical(as.integer(rw$bounds), as.integer(rc$bounds))
+  expect_identical(rw$solver_used, "ckmeans")
+  expect_identical(rc$solver_used, "ckmeans")
+  valid_partition(rw, 3L)
+
+  x <- 0:255
+  rw2 <- cluster(x, 27L)
+  rc2 <- cluster(x, 27L, solver = "ckmeans")
+  expect_identical(rw2$solver_used, "ckmeans")
+  expect_identical(as.integer(rw2$bounds), as.integer(rc2$bounds))
+  expect_equal(rw2$sse, rc2$sse)
+  valid_partition(rw2, 27L)
+})
+
+test_that("skipped DP: solver_used mirrors the requested solver", {
+  ties <- rep(2, 20)
+  rw <- cluster(ties, 8L)
+  rc <- cluster(ties, 8L, solver = "ckmeans")
+  expect_equal(length(rw$sizes), 1L)
+  expect_identical(rw$solver_used, "wilber")
+  expect_identical(rc$solver_used, "ckmeans")
+  xs <- c(1, 2, 3, 1, 2)
+  cw <- cluster(xs, 10L)
+  cck <- cluster(xs, 10L, solver = "ckmeans")
+  expect_equal(length(cw$sizes), 3L)
+  expect_identical(cw$solver_used, "wilber")
+  expect_identical(cck$solver_used, "ckmeans")
 })
 
