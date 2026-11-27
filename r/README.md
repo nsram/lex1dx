@@ -4,7 +4,9 @@ lex1dx is fast 1-D k-means clustering. It partitions a numeric vector into k con
 
 It targets a 0.01% relative-excess-SSE (REE) tolerance.
 
-The C++17 core is also used by the [Python](https://github.com/nsram/lex1dx/tree/main/python) and [Scala](https://github.com/nsram/lex1dx/tree/main/scala) bindings.
+The C++17 core is also used by the [Python](https://github.com/nsram/lex1dx/tree/main/python) binding.
+
+A [Scala](https://github.com/nsram/lex1dx/tree/main/scala) port of the same algorithm runs on the JVM with no C++ dependency.
 
 The source repository is [github.com/nsram/lex1dx](https://github.com/nsram/lex1dx).
 

@@ -19,10 +19,11 @@ Description: Fast one-dimensional k-means clustering, for scalar quantization,
     provided, with a k-preserving fallback when grouping would leave fewer
     than k groups. An exact path, a choice of Fisher or wilber-interp solver,
     and optional observation weights are also provided. The C++17 core is
-    shared with the 'Python' and 'Scala' implementations in the same
-    repository. Method details are given in Sriram (2026)
-    <doi:10.5281/zenodo.24543220>. Objectives and defaults differ from
-    'lex1d', which remains the paper-faithful exact-quality reference.
+    shared with the 'Python' package. A 'Scala' port of the same algorithm,
+    with no C++ dependency, is in the same repository. Method details are
+    given in Sriram (2026) <doi:10.5281/zenodo.24543220>. Objectives and
+    defaults differ from 'lex1d', which remains the paper-faithful
+    exact-quality reference.
 License: MIT + file LICENSE
 URL: https://github.com/nsram/lex1dx
 BugReports: https://github.com/nsram/lex1dx/issues

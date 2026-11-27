@@ -4,7 +4,9 @@ lex1dx is fast 1-D k-means clustering. It partitions a one-dimensional array int
 
 It targets a 0.01% relative-excess-SSE (REE) tolerance.
 
-The C++17 core is also used by the [R](https://github.com/nsram/lex1dx/tree/main/r) and [Scala](https://github.com/nsram/lex1dx/tree/main/scala) bindings.
+The C++17 core is also used by the [R](https://github.com/nsram/lex1dx/tree/main/r) binding.
+
+A [Scala](https://github.com/nsram/lex1dx/tree/main/scala) port of the same algorithm runs on the JVM with no C++ dependency.
 
 The source repository is [github.com/nsram/lex1dx](https://github.com/nsram/lex1dx).
 
@@ -73,7 +75,14 @@ lex1dx.cluster(x, k, *, mode="tuned", sig=None, M=None, tolerance=1e-11,
 
 If `k` is larger than the number of atoms, it is clamped to that number.
 
-On `athletics20`, `cluster(x, 20)` returns `k=12` and SSE 0.
+For example, `athletics20` holds 20 men's 100 m times but only 12 distinct values, because of ties:
+
+```python
+x = lex1dx.datasets.load("athletics20")
+r = lex1dx.cluster(x, 20)  # ask for 20 bins
+r.k    # 12: one bin per distinct value
+r.sse  # 0.0: every bin holds a single value
+```
 
 ### mode
 
